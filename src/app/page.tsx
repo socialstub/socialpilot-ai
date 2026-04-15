@@ -11,6 +11,7 @@ import { AnalyticsDashboard } from '@/components/analytics/analytics-dashboard';
 import { AIToolsPage } from '@/components/ai-tools/ai-tools-page';
 import { TeamManagement } from '@/components/team/team-management';
 import { ConnectedAccounts } from '@/components/accounts/connected-accounts';
+import { ArchitectureView } from '@/components/architecture/architecture-view';
 import { cn } from '@/lib/utils';
 
 function ViewRouter() {
@@ -31,6 +32,8 @@ function ViewRouter() {
       return <ConnectedAccounts />;
     case 'team':
       return <TeamManagement />;
+    case 'architecture':
+      return <ArchitectureView />;
     default:
       return <DashboardOverview />;
   }

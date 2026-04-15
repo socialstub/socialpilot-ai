@@ -11,6 +11,7 @@ import {
   Sparkles,
   Link2,
   Users,
+  Blueprint,
   ChevronLeft,
   ChevronRight,
   Sun,
@@ -42,6 +43,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   Sparkles,
   Link2,
   Users,
+  Blueprint,
 };
 
 const PLATFORM_ICON_COLORS: Record<string, string> = {
@@ -85,9 +87,10 @@ export function AppSidebar() {
         {/* Nav Items */}
         <nav className="flex-1 overflow-y-auto py-3 px-2">
           <div className="space-y-0.5">
-            {NAV_ITEMS.map((item) => {
+            {NAV_ITEMS.map((item, index) => {
               const Icon = ICON_MAP[item.icon] || LayoutDashboard;
               const isActive = activeView === item.id;
+              const showSeparator = item.id === 'architecture';
 
               const button = (
                 <button
@@ -111,17 +114,28 @@ export function AppSidebar() {
                 </button>
               );
 
+              const navItem = (
+                <div key={item.id}>
+                  {showSeparator && sidebarOpen && <Separator className="my-2" />}
+                  {showSeparator && !sidebarOpen && <Separator className="my-2 mx-1" />}
+                  {button}
+                </div>
+              );
+
               if (!sidebarOpen) {
                 return (
-                  <Tooltip key={item.id}>
-                    <TooltipTrigger asChild>{button}</TooltipTrigger>
-                    <TooltipContent side="right" className="font-medium">
-                      {item.label}
-                    </TooltipContent>
-                  </Tooltip>
+                  <div key={item.id}>
+                    {showSeparator && <Separator className="my-2 mx-1" />}
+                    <Tooltip>
+                      <TooltipTrigger asChild>{button}</TooltipTrigger>
+                      <TooltipContent side="right" className="font-medium">
+                        {item.label}
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
                 );
               }
-              return button;
+              return navItem;
             })}
           </div>
 

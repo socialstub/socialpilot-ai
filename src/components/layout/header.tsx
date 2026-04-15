@@ -25,6 +25,7 @@ const VIEW_TITLES: Record<string, string> = {
   'ai-tools': 'AI Tools',
   accounts: 'Connected Accounts',
   team: 'Team Management',
+  architecture: 'Architecture & Docs',
 };
 
 const VIEW_DESCRIPTIONS: Record<string, string> = {
@@ -35,6 +36,7 @@ const VIEW_DESCRIPTIONS: Record<string, string> = {
   'ai-tools': 'AI-powered content creation and automation',
   accounts: 'Manage your connected social accounts',
   team: 'Manage team roles and approval workflows',
+  architecture: 'System architecture, wireframes, API reference & MVP roadmap',
 };
 
 export function AppHeader() {
