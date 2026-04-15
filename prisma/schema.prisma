@@ -1,0 +1,159 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  avatar    String?
+  role      String   @default("admin") // admin, editor, viewer
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  socialAccounts SocialAccount[]
+  posts          Post[]
+  teams          TeamMember[]
+  activities     Activity[]
+}
+
+model Team {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members TeamMember[]
+}
+
+model TeamMember {
+  id       String   @id @default(cuid())
+  role     String   @default("editor") // admin, editor, viewer
+  userId   String
+  teamId   String
+  joinedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+  team Team @relation(fields: [teamId], references: [id])
+
+  @@unique([userId, teamId])
+}
+
+model SocialAccount {
+  id               String   @id @default(cuid())
+  platform         String   // facebook, instagram, twitter, linkedin, tiktok, youtube
+  platformUserId   String
+  username         String
+  displayName      String
+  avatar           String?
+  accessToken      String?
+  refreshToken     String?
+  tokenExpiresAt   DateTime?
+  followersCount   Int      @default(0)
+  followingCount   Int      @default(0)
+  isActive         Boolean  @default(true)
+  connectedAt      DateTime @default(now())
+  lastSyncedAt     DateTime?
+  userId           String
+
+  user   User    @relation(fields: [userId], references: [id])
+  posts  Post[]
+}
+
+model Post {
+  id             String   @id @default(cuid())
+  title          String?
+  content        String
+  platform       String   // facebook, instagram, twitter, linkedin, tiktok, youtube, multi
+  mediaUrls      String?  // JSON array of media URLs
+  hashtags       String?  // JSON array of hashtags
+  scheduledAt    DateTime?
+  publishedAt    DateTime?
+  status         String   @default("draft") // draft, pending_approval, scheduled, published, failed
+  aiGenerated    Boolean  @default(false)
+  platformPostId String?  // ID returned by the social platform
+  reach          Int      @default(0)
+  engagement     Int      @default(0) // likes + comments + shares
+  likes          Int      @default(0)
+  comments       Int      @default(0)
+  shares         Int      @default(0)
+  clicks         Int      @default(0)
+  approvedBy     String?
+  approvedAt     DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  userId         String
+  accountId      String?
+
+  user       User           @relation(fields: [userId], references: [id])
+  account    SocialAccount? @relation(fields: [accountId], references: [id])
+  analytics  PostAnalytics[]
+  postComments Comment[]
+}
+
+model PostAnalytics {
+  id        String   @id @default(cuid())
+  date      DateTime
+  reach     Int      @default(0)
+  impressions Int    @default(0)
+  likes     Int      @default(0)
+  comments  Int      @default(0)
+  shares    Int      @default(0)
+  clicks    Int      @default(0)
+  saves     Int      @default(0)
+  postId    String
+  createdAt DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id])
+}
+
+model Comment {
+  id          String   @id @default(cuid())
+  platform    String
+  platformId  String
+  content     String
+  authorName  String
+  authorAvatar String?
+  postId      String
+  isReplied   Boolean  @default(false)
+  aiReply     String?
+  createdAt   DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id])
+}
+
+model Activity {
+  id        String   @id @default(cuid())
+  type      String   // post_created, post_published, account_connected, etc.
+  message   String
+  metadata  String?  // JSON
+  userId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model ContentTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  category    String   // promotion, educational, engagement, announcement
+  platform    String?  // null = all platforms
+  content     String
+  variables   String?  // JSON array of variable names
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model HashtagGroup {
+  id        String   @id @default(cuid())
+  name      String
+  tags      String   // JSON array of hashtags
+  platform  String?
+  createdAt DateTime @default(now())
+}
