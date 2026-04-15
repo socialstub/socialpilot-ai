@@ -11,7 +11,7 @@ import {
   Sparkles,
   Link2,
   Users,
-  Blueprint,
+  LayoutGrid,
   ChevronLeft,
   ChevronRight,
   Sun,
@@ -43,7 +43,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   Sparkles,
   Link2,
   Users,
-  Blueprint,
+  LayoutGrid,
 };
 
 const PLATFORM_ICON_COLORS: Record<string, string> = {
