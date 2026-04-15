@@ -1,0 +1,18 @@
+{
+  "lockfileVersion": 1,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "socialpilot-app-server",
+      "dependencies": {
+        "@hono/react-renderer": "^0.0.2",
+        "hono": "^4.7.4",
+      },
+    },
+  },
+  "packages": {
+    "@hono/react-renderer": ["@hono/react-renderer@0.0.2", "", { "peerDependencies": { "hono": "*" } }, "sha512-XaVfDma20lFDn+8lWIU+RywEVcoY/3WRiSyS6gCnr/HZW2QoTePaJM9163mzjClnceEf2ogQJGaEJ1Q67A4lfg=="],
+
+    "hono": ["hono@4.12.14", "", {}, "sha512-am5zfg3yu6sqn5yjKBNqhnTX7Cv+m00ox+7jbaKkrLMRJ4rAdldd1xPd/JzbBWspqaQv6RSTrgFN95EsfhC+7w=="],
+  }
+}

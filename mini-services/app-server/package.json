@@ -1,0 +1,12 @@
+{
+  "name": "socialpilot-app-server",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "bun --hot index.ts"
+  },
+  "dependencies": {
+    "hono": "^4.7.4",
+    "@hono/react-renderer": "^0.0.2"
+  }
+}
