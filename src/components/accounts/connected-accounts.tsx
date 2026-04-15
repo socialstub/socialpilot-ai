@@ -405,7 +405,7 @@ export function ConnectedAccounts() {
             )}
 
             {/* Step 3: Success */}
-            {authStep === 'done' && (
+            {authStep === 'done' && selectedPlatform && (
               <div className="flex flex-col items-center justify-center py-12 gap-4">
                 <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30">
                   <Check className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />

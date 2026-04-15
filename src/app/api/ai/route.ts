@@ -70,7 +70,7 @@ async function generateCaptionWithAI(topic: string, platform: string, tone: stri
     const response = await zai.chat.completions.create({
       messages: [
         {
-          role: 'assistant',
+          role: 'system',
           content:
             'You are a world-class social media content strategist with expertise in crafting viral, engaging posts across all major platforms. You understand platform-specific nuances, audience psychology, and what drives engagement. Always produce original, authentic content that feels human — never generic or robotic. Include relevant emojis naturally but don\'t overdo them.',
         },
@@ -108,7 +108,7 @@ async function rewriteForPlatformWithAI(content: string, platform: string, tone:
     const response = await zai.chat.completions.create({
       messages: [
         {
-          role: 'assistant',
+          role: 'system',
           content:
             'You are a social media content adapter. Your job is to take existing content and rewrite it to perfectly fit a specific platform\'s style, constraints, and audience. Preserve the core message while optimizing for maximum engagement on the target platform.',
         },
@@ -137,7 +137,7 @@ async function generateHashtagsWithAI(topic: string, platform: string): Promise<
     const response = await zai.chat.completions.create({
       messages: [
         {
-          role: 'assistant',
+          role: 'system',
           content:
             'You are a social media hashtag expert. You know which hashtags perform well on each platform and understand hashtag strategy — mixing broad, niche, and trending tags. Always respond with valid JSON only, no markdown, no extra text.',
         },
@@ -171,7 +171,7 @@ async function generateAutoReplyWithAI(commentContent: string): Promise<string> 
     const response = await zai.chat.completions.create({
       messages: [
         {
-          role: 'assistant',
+          role: 'system',
           content:
             'You are a social media community manager for a brand. You reply to comments in a friendly, genuine, and engaging way. Your replies should feel human — not corporate. Keep replies concise (1-2 sentences). Use emojis occasionally when it feels natural. Be helpful, appreciative, and conversational. Never be defensive or dismissive.',
         },

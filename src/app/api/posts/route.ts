@@ -1,6 +1,21 @@
 import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
 
+// Helper: get or create a default user
+async function getOrCreateDefaultUser(): Promise<string> {
+  let user = await db.user.findFirst();
+  if (!user) {
+    user = await db.user.create({
+      data: {
+        email: 'sarah@socialpilot.ai',
+        name: 'Sarah Chen',
+        role: 'admin',
+      },
+    });
+  }
+  return user.id;
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -66,6 +81,8 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+    const userId = await getOrCreateDefaultUser();
+
     const post = await db.post.create({
       data: {
         title: body.title,
@@ -76,7 +93,7 @@ export async function POST(request: Request) {
         scheduledAt: body.scheduledAt ? new Date(body.scheduledAt) : undefined,
         status: body.status || 'draft',
         aiGenerated: body.aiGenerated || false,
-        userId: body.userId || 'usr-001',
+        userId,
         accountId: body.accountId,
       },
     });
