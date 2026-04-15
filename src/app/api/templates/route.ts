@@ -33,3 +33,57 @@ export async function GET() {
     return NextResponse.json({ success: false, error: 'Failed to fetch templates' }, { status: 500 });
   }
 }
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const { name, category, platform, content, variables } = body;
+
+    if (!name || !content) {
+      return NextResponse.json(
+        { success: false, error: 'Name and content are required' },
+        { status: 400 },
+      );
+    }
+
+    // Auto-detect variables from content if not provided
+    const detectedVariables = variables || extractVariables(content);
+
+    const template = await db.contentTemplate.create({
+      data: {
+        name,
+        category: category || 'engagement',
+        platform: platform || null,
+        content,
+        variables: JSON.stringify(detectedVariables),
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        id: template.id,
+        name: template.name,
+        category: template.category,
+        platform: template.platform,
+        content: template.content,
+        variables: detectedVariables,
+      },
+    });
+  } catch (error) {
+    console.error('Error creating template:', error);
+    return NextResponse.json({ success: false, error: 'Failed to create template' }, { status: 500 });
+  }
+}
+
+function extractVariables(content: string): string[] {
+  const regex = /\{(\w+)\}/g;
+  const variables: string[] = [];
+  let match;
+  while ((match = regex.exec(content)) !== null) {
+    if (!variables.includes(match[1])) {
+      variables.push(match[1]);
+    }
+  }
+  return variables;
+}

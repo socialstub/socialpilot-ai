@@ -1,6 +1,21 @@
 import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
 
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    if (!id) {
+      return NextResponse.json({ success: false, error: 'Account ID required' }, { status: 400 });
+    }
+    await db.socialAccount.delete({ where: { id } });
+    return NextResponse.json({ success: true, message: 'Account deleted' });
+  } catch (error) {
+    console.error('Error deleting account:', error);
+    return NextResponse.json({ success: false, error: 'Failed to delete account' }, { status: 500 });
+  }
+}
+
 export async function GET() {
   try {
     const accounts = await db.socialAccount.findMany({

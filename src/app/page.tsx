@@ -11,17 +11,17 @@ import { AnalyticsDashboard } from '@/components/analytics/analytics-dashboard';
 import { AIToolsPage } from '@/components/ai-tools/ai-tools-page';
 import { ConnectedAccounts } from '@/components/accounts/connected-accounts';
 import { TeamManagement } from '@/components/team/team-management';
-import { ArchitectureView } from '@/components/architecture/architecture-view';
+import { SocialInbox } from '@/components/inbox/social-inbox';
 
 const VIEW_MAP: Record<string, React.ComponentType> = {
   dashboard: DashboardOverview,
+  inbox: SocialInbox,
   compose: ContentComposer,
   scheduler: SchedulerView,
   analytics: AnalyticsDashboard,
   'ai-tools': AIToolsPage,
   accounts: ConnectedAccounts,
   team: TeamManagement,
-  architecture: ArchitectureView,
 };
 
 export default function Home() {

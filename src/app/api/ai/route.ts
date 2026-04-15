@@ -1,4 +1,8 @@
 import { NextResponse } from 'next/server';
+import { createLLM } from 'z-ai-web-dev-sdk';
+
+// Initialize the LLM client
+const llm = createLLM();
 
 // AI-powered content generation endpoint (uses z-ai-web-dev-sdk)
 export async function POST(request: Request) {
@@ -6,22 +10,20 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { type, topic, platform, tone, length, content, url } = body;
 
-    // Simulate AI responses for demo purposes
-    // In production, this would call z-ai-web-dev-sdk or OpenAI
     let result = '';
 
     switch (type) {
       case 'generate_caption':
-        result = generateCaption(topic, platform, tone, length);
+        result = await generateCaptionWithAI(topic, platform, tone, length);
         break;
       case 'rewrite':
-        result = rewriteForPlatform(content, platform, tone);
+        result = await rewriteForPlatformWithAI(content, platform, tone);
         break;
       case 'hashtags':
-        result = JSON.stringify(generateHashtags(topic || content, platform, 15));
+        result = await generateHashtagsWithAI(topic || content, platform);
         break;
       case 'auto_reply':
-        result = generateAutoReply(content);
+        result = await generateAutoReplyWithAI(content);
         break;
       case 'trends':
         result = JSON.stringify(getTrendingTopics());
@@ -42,6 +44,144 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, error: 'AI request failed' }, { status: 500 });
   }
 }
+
+// ─── AI-Powered Functions (with fallback to mock) ───────────────────────────
+
+async function generateCaptionWithAI(topic: string, platform: string, tone: string, length: string): Promise<string> {
+  const platformLabel = platform ? platform.charAt(0).toUpperCase() + platform.slice(1) : 'General';
+  const toneLabel = tone || 'professional';
+  const lengthLabel = length || 'medium';
+
+  const lengthGuidance: Record<string, string> = {
+    short: 'Keep it concise — 1-2 short sentences maximum, under 150 characters.',
+    medium: 'Write a moderately detailed caption — 3-5 sentences, around 150-300 characters.',
+    long: 'Write a detailed, engaging caption — 5-8 sentences, around 300-500 characters with bullet points or line breaks.',
+  };
+
+  try {
+    const response = await llm.chat({
+      model: 'deepseek-chat',
+      messages: [
+        {
+          role: 'system',
+          content:
+            'You are a world-class social media content strategist with expertise in crafting viral, engaging posts across all major platforms. You understand platform-specific nuances, audience psychology, and what drives engagement. Always produce original, authentic content that feels human — never generic or robotic. Include relevant emojis naturally but don\'t overdo them.',
+        },
+        {
+          role: 'user',
+          content: `Generate a social media caption for the following:\n\n- Topic: ${topic}\n- Platform: ${platformLabel}\n- Tone: ${toneLabel}\n- Length: ${lengthLabel}\n\nGuidelines:\n${lengthGuidance[lengthLabel] || lengthGuidance.medium}\nTailor the style to ${platformLabel}\'s culture and audience. Make it feel native to the platform. Include 2-4 relevant hashtags at the end.`,
+        },
+      ],
+    });
+
+    const text = response.choices[0]?.message?.content?.trim();
+    if (text) return text;
+  } catch (error) {
+    console.error('LLM generate_caption failed, falling back to mock:', error);
+  }
+
+  return generateCaption(topic, platform, tone, length);
+}
+
+async function rewriteForPlatformWithAI(content: string, platform: string, tone: string): Promise<string> {
+  const platformLabel = platform ? platform.charAt(0).toUpperCase() + platform.slice(1) : 'General';
+  const toneLabel = tone || 'professional';
+
+  const platformConstraints: Record<string, string> = {
+    twitter: 'Maximum 280 characters. Be punchy and direct. Use 1-2 hashtags max.',
+    instagram: 'Can be longer (up to 2,200 characters). Use line breaks, emojis, and 5-10 hashtags. Style should be visual and aspirational.',
+    linkedin: 'Professional tone, thought-leadership style. Can be up to 3,000 characters. Use bullet points and clear structure. Avoid excessive emojis.',
+    facebook: 'Conversational and engaging. 200-500 characters optimal. Encourage likes, comments, and shares. Use a couple of emojis.',
+    tiktok: 'Short, punchy, Gen-Z friendly. Use trending language and 3-5 hashtags. High energy.',
+  };
+
+  try {
+    const response = await llm.chat({
+      model: 'deepseek-chat',
+      messages: [
+        {
+          role: 'system',
+          content:
+            'You are a social media content adapter. Your job is to take existing content and rewrite it to perfectly fit a specific platform\'s style, constraints, and audience. Preserve the core message while optimizing for maximum engagement on the target platform.',
+        },
+        {
+          role: 'user',
+          content: `Rewrite the following content for ${platformLabel}:\n\nOriginal content: "${content}"\n\nTarget tone: ${toneLabel}\nPlatform constraints: ${platformConstraints[platform] || 'Keep it engaging and native to the platform.'}\n\nRewrite the content to feel natural and native to ${platformLabel}. Do NOT wrap in quotes.`,
+        },
+      ],
+    });
+
+    const text = response.choices[0]?.message?.content?.trim();
+    if (text) return text;
+  } catch (error) {
+    console.error('LLM rewrite failed, falling back to mock:', error);
+  }
+
+  return rewriteForPlatform(content, platform, tone);
+}
+
+async function generateHashtagsWithAI(topic: string, platform: string): Promise<string> {
+  const platformLabel = platform ? platform.charAt(0).toUpperCase() + platform.slice(1) : 'General';
+
+  try {
+    const response = await llm.chat({
+      model: 'deepseek-chat',
+      messages: [
+        {
+          role: 'system',
+          content:
+            'You are a social media hashtag expert. You know which hashtags perform well on each platform and understand hashtag strategy — mixing broad, niche, and trending tags. Always respond with valid JSON only, no markdown, no extra text.',
+        },
+        {
+          role: 'user',
+          content: `Generate relevant hashtags for the following:\n\n- Topic/Content: "${topic}"\n- Platform: ${platformLabel}\n\nRespond ONLY with a JSON object in this exact format (no markdown, no code fences):\n{"hashtags": ["#tag1", "#tag2", "#tag3", "#tag4", "#tag5", "#tag6", "#tag7", "#tag8", "#tag9", "#tag10", "#tag11", "#tag12", "#tag13", "#tag14", "#tag15"], "performance_score": <number 60-95>, "trending": ["#trending1", "#trending2", "#trending3"]}\n\nGenerate 15 hashtags total. Include a mix of high-volume, niche, and platform-specific tags. The performance_score estimates how well these tags would perform (60-95). The trending array should have 3 tags that are currently trending.`,
+        },
+      ],
+    });
+
+    const raw = response.choices[0]?.message?.content?.trim();
+    if (raw) {
+      // Strip markdown code fences if present
+      const cleaned = raw.replace(/^```json?\s*/i, '').replace(/\s*```$/i, '').trim();
+      const parsed = JSON.parse(cleaned);
+      if (parsed.hashtags && Array.isArray(parsed.hashtags)) {
+        return JSON.stringify(parsed);
+      }
+    }
+  } catch (error) {
+    console.error('LLM hashtags failed, falling back to mock:', error);
+  }
+
+  return JSON.stringify(generateHashtags(topic, platform, 15));
+}
+
+async function generateAutoReplyWithAI(commentContent: string): Promise<string> {
+  try {
+    const response = await llm.chat({
+      model: 'deepseek-chat',
+      messages: [
+        {
+          role: 'system',
+          content:
+            'You are a social media community manager for a brand. You reply to comments in a friendly, genuine, and engaging way. Your replies should feel human — not corporate. Keep replies concise (1-2 sentences). Use emojis occasionally when it feels natural. Be helpful, appreciative, and conversational. Never be defensive or dismissive.',
+        },
+        {
+          role: 'user',
+          content: `Generate a reply to this social media comment:\n\n"${commentContent}"\n\nWrite a friendly, contextual reply that acknowledges what the person said. Keep it brief and natural. Do NOT wrap in quotes.`,
+        },
+      ],
+    });
+
+    const text = response.choices[0]?.message?.content?.trim();
+    if (text) return text;
+  } catch (error) {
+    console.error('LLM auto_reply failed, falling back to mock:', error);
+  }
+
+  return generateAutoReply(commentContent);
+}
+
+// ─── Mock Fallback Functions ────────────────────────────────────────────────
 
 function generateCaption(topic: string, platform: string, tone: string, length: string) {
   const captions: Record<string, string[]> = {
@@ -69,7 +209,7 @@ function rewriteForPlatform(content: string, platform: string, tone: string) {
     instagram: { prefix: '', suffix: '\n\n.\n.\n.\nFollow for more! ✨', maxLen: 2200, emoji: '📸' },
     linkedin: { prefix: '', suffix: '\n\nWhat are your thoughts? I\'d love to hear your perspective in the comments.\n\n#Professional #Leadership', maxLen: 3000, emoji: '💼' },
     facebook: { prefix: '📢 ', suffix: '\n\nLike ❤️ Comment 💬 Share 🔄 Save 🔖', maxLen: 500, emoji: '📢' },
-    tiktok: { prefix: '', suffix: '\n\n#${process.env.DEFAULT_HASHTAG || "fyp"} #viral', maxLen: 2200, emoji: '🎬' },
+    tiktok: { prefix: '', suffix: '\n\n#fyp #viral', maxLen: 2200, emoji: '🎬' },
   };
 
   const adaptation = platformAdaptations[platform] || platformAdaptations.facebook;
@@ -93,7 +233,6 @@ function generateHashtags(topic: string, platform: string, count: number) {
     '#MarketingDigital', '#BusinessGrowth', '#Onlinemarketing',
   ];
 
-  // Shuffle and return requested count
   const shuffled = allHashtags.sort(() => Math.random() - 0.5);
   return {
     hashtags: shuffled.slice(0, count),
@@ -113,6 +252,8 @@ function generateAutoReply(commentContent: string) {
   ];
   return replies[Math.floor(Math.random() * replies.length)];
 }
+
+// ─── Mock Data Functions (kept as-is) ───────────────────────────────────────
 
 function getTrendingTopics() {
   return [

@@ -22,6 +22,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
+import { TemplateLibrary } from '@/components/composer/template-library';
 import {
   Sparkles,
   Send,
@@ -36,6 +37,7 @@ import {
   X,
   Check,
   Globe,
+  BookOpen,
 } from 'lucide-react';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -577,8 +579,7 @@ export function ContentComposer() {
             <TabsList className="w-full">
               <TabsTrigger value="ai-generate" className="flex-1 gap-1.5">
                 <Sparkles className="size-3.5" />
-                <span className="hidden sm:inline">AI Generate</span>
-                <span className="sm:hidden">AI</span>
+                <span className="hidden sm:inline">AI</span>
               </TabsTrigger>
               <TabsTrigger value="ai-rewrite" className="flex-1 gap-1.5">
                 <Wand2 className="size-3.5" />
@@ -586,7 +587,11 @@ export function ContentComposer() {
               </TabsTrigger>
               <TabsTrigger value="hashtags" className="flex-1 gap-1.5">
                 <Hash className="size-3.5" />
-                <span className="hidden sm:inline">Hashtags</span>
+                <span className="hidden sm:inline">Tags</span>
+              </TabsTrigger>
+              <TabsTrigger value="templates" className="flex-1 gap-1.5">
+                <BookOpen className="size-3.5" />
+                <span className="hidden sm:inline">Templates</span>
               </TabsTrigger>
               <TabsTrigger value="preview" className="flex-1 gap-1.5">
                 <Eye className="size-3.5" />
@@ -854,6 +859,17 @@ export function ContentComposer() {
                   )}
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            {/* ── Tab: Templates ─────────────────────────────────────────── */}
+            <TabsContent value="templates">
+              <TemplateLibrary
+                onApplyTemplate={(templateContent) => {
+                  setContent(templateContent);
+                  setIsAiGenerated(false);
+                }}
+                composerContent={content}
+              />
             </TabsContent>
 
             {/* ── Tab: Preview ───────────────────────────────────────────── */}

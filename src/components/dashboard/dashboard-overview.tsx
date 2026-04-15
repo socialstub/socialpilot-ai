@@ -32,10 +32,21 @@ import {
   Linkedin,
   Youtube,
   Music,
+  PenSquare,
+  Link2,
+  BarChart3,
+  Sparkles,
+  CalendarDays,
+  Inbox,
+  Clock,
+  Flame,
+  ArrowRight,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import { motion } from 'framer-motion';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -274,10 +285,28 @@ function TopPostsSkeleton() {
   );
 }
 
+// ── Quick Actions Config ───────────────────────────────────────────────────
+
+const QUICK_ACTIONS = [
+  { id: 'compose', label: 'New Post', icon: PenSquare, color: 'text-violet-600 dark:text-violet-400', bg: 'bg-violet-100 dark:bg-violet-900/30' },
+  { id: 'accounts', label: 'Connect Account', icon: Link2, color: 'text-cyan-600 dark:text-cyan-400', bg: 'bg-cyan-100 dark:bg-cyan-900/30' },
+  { id: 'analytics', label: 'View Analytics', icon: BarChart3, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-900/30' },
+  { id: 'ai-tools', label: 'AI Generate', icon: Sparkles, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-100 dark:bg-amber-900/30' },
+  { id: 'scheduler', label: 'Schedule Post', icon: CalendarDays, color: 'text-pink-600 dark:text-pink-400', bg: 'bg-pink-100 dark:bg-pink-900/30' },
+  { id: 'inbox', label: 'Check Inbox', icon: Inbox, color: 'text-sky-600 dark:text-sky-400', bg: 'bg-sky-100 dark:bg-sky-900/30' },
+] as const;
+
+const ENGAGEMENT_ALERTS = [
+  { message: 'Your Instagram post reached 1K likes!', platform: 'instagram', time: '2h ago', type: 'milestone' },
+  { message: 'TikTok video trending — 10K views!', platform: 'tiktok', time: '4h ago', type: 'viral' },
+  { message: 'LinkedIn article got 500+ impressions in 1 hour', platform: 'linkedin', time: '6h ago', type: 'spike' },
+  { message: 'Facebook post shared 200 times!', platform: 'facebook', time: '8h ago', type: 'viral' },
+] as const;
+
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 export function DashboardOverview() {
-  const { accounts, posts, activities, refreshData } = useAppStore();
+  const { accounts, posts, activities, refreshData, setActiveView } = useAppStore();
 
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [activityData, setActivityData] = useState<ActivityData[]>([]);
@@ -388,6 +417,12 @@ export function DashboardOverview() {
   // Activities to display
   const recentActivities = activityData.slice(0, 8);
 
+  // Scheduled posts (next 3 upcoming)
+  const scheduledPosts = posts
+    .filter((p) => p.status === 'scheduled' && p.scheduledAt)
+    .sort((a, b) => new Date(a.scheduledAt!).getTime() - new Date(b.scheduledAt!).getTime())
+    .slice(0, 3);
+
   // ── Render ─────────────────────────────────────────────────────────────────
 
   if (error) {
@@ -460,6 +495,166 @@ export function DashboardOverview() {
               </Card>
             );
           })}
+        </div>
+      )}
+
+      {/* Quick Actions + Widgets Row */}
+      {isLoading ? (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <Skeleton className="h-[260px] rounded-xl lg:col-span-2" />
+          <Skeleton className="h-[260px] rounded-xl" />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Quick Actions Grid */}
+          <Card className="rounded-xl lg:col-span-2">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Zap className="h-4 w-4 text-amber-500" />
+                Quick Actions
+              </CardTitle>
+              <CardDescription>Common tasks at your fingertips</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {QUICK_ACTIONS.map((action) => {
+                  const Icon = action.icon;
+                  return (
+                    <motion.button
+                      key={action.id}
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => setActiveView(action.id)}
+                      className="flex flex-col items-center gap-2.5 p-4 rounded-xl border border-border/60 bg-background hover:bg-muted/50 transition-colors group cursor-pointer"
+                    >
+                      <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${action.bg} transition-transform group-hover:scale-110`}>
+                        <Icon className={`h-5 w-5 ${action.color}`} />
+                      </div>
+                      <span className="text-xs font-medium text-foreground">{action.label}</span>
+                    </motion.button>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Right column: Posting Reminders + Engagement Alerts */}
+          <div className="flex flex-col gap-4">
+            {/* Posting Reminders Widget */}
+            <Card className="rounded-xl flex-1">
+              <CardHeader className="pb-2 pt-4 px-4">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm flex items-center gap-1.5">
+                    <Clock className="h-3.5 w-3.5 text-amber-500" />
+                    Upcoming Posts
+                  </CardTitle>
+                  <button
+                    onClick={() => setActiveView('scheduler')}
+                    className="text-[11px] text-violet-600 dark:text-violet-400 hover:underline flex items-center gap-0.5"
+                  >
+                    View All
+                    <ArrowRight className="h-3 w-3" />
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent className="px-4 pb-4">
+                {scheduledPosts.length === 0 ? (
+                  <div className="text-center py-4">
+                    <Calendar className="h-6 w-6 text-muted-foreground/40 mx-auto mb-1.5" />
+                    <p className="text-xs text-muted-foreground">No scheduled posts</p>
+                    <button
+                      onClick={() => setActiveView('scheduler')}
+                      className="text-xs text-violet-600 dark:text-violet-400 hover:underline mt-1"
+                    >
+                      Schedule one now
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-2.5">
+                    {scheduledPosts.map((post) => {
+                      const PlatformIcon = getPlatformIcon(post.platform);
+                      const platformColor = getPlatformColor(post.platform);
+                      const scheduledDate = post.scheduledAt ? new Date(post.scheduledAt) : null;
+                      const timeUntil = scheduledDate
+                        ? (() => {
+                            const diffMs = scheduledDate.getTime() - Date.now();
+                            const diffH = Math.floor(diffMs / 3600000);
+                            const diffM = Math.floor((diffMs % 3600000) / 60000);
+                            if (diffH > 24) return `${Math.floor(diffH / 24)}d ${diffH % 24}h`;
+                            if (diffH > 0) return `${diffH}h ${diffM}m`;
+                            if (diffM > 0) return `${diffM}m`;
+                            return 'Now';
+                          })()
+                        : '';
+
+                      return (
+                        <div
+                          key={post.id}
+                          className="flex items-center gap-2.5 p-2 rounded-lg bg-muted/30 hover:bg-muted/60 transition-colors"
+                        >
+                          <div
+                            className="flex items-center justify-center w-7 h-7 rounded-md shrink-0"
+                            style={{ backgroundColor: platformColor + '15', color: platformColor }}
+                          >
+                            <PlatformIcon className="h-3.5 w-3.5" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium truncate">
+                              {post.title || post.content.slice(0, 40)}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground">
+                              {scheduledDate?.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                            </p>
+                          </div>
+                          <Badge variant="outline" className="text-[10px] h-5 px-1.5 shrink-0 border-primary/30 text-primary font-medium">
+                            {timeUntil}
+                          </Badge>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Engagement Alerts Widget */}
+            <Card className="rounded-xl flex-1">
+              <CardHeader className="pb-2 pt-4 px-4">
+                <CardTitle className="text-sm flex items-center gap-1.5">
+                  <Flame className="h-3.5 w-3.5 text-orange-500" />
+                  Engagement Alerts
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4">
+                <div className="space-y-2.5">
+                  {ENGAGEMENT_ALERTS.map((alert, idx) => {
+                    const PlatformIcon = getPlatformIcon(alert.platform);
+                    const platformColor = getPlatformColor(alert.platform);
+                    return (
+                      <motion.div
+                        key={idx}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: idx * 0.08 }}
+                        className="flex items-start gap-2.5 p-2 rounded-lg bg-muted/30"
+                      >
+                        <div
+                          className="flex items-center justify-center w-7 h-7 rounded-md shrink-0 mt-0.5"
+                          style={{ backgroundColor: platformColor + '15', color: platformColor }}
+                        >
+                          <PlatformIcon className="h-3.5 w-3.5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs leading-relaxed text-foreground">{alert.message}</p>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">{alert.time}</p>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       )}
 

@@ -24,7 +24,9 @@ import {
   CalendarDays,
   Timer,
   ChevronsUpDown,
+  LayoutList,
 } from 'lucide-react';
+import { ContentCalendar } from './content-calendar';
 
 // ─── Types ─────────────────────────────────────────────────────
 interface ScheduledPost {
@@ -124,6 +126,9 @@ export function SchedulerView() {
   // Calendar state
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+
+  // View tab state
+  const [activeTab, setActiveTab] = useState<'list' | 'calendar'>('list');
 
   // Data state
   const [scheduledPosts, setScheduledPosts] = useState<ScheduledPost[]>([]);
@@ -382,6 +387,27 @@ export function SchedulerView() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            {/* Calendar / List view toggle */}
+            <div className="inline-flex h-9 items-center rounded-lg border bg-muted p-[3px]">
+              <Button
+                variant={activeTab === 'calendar' ? 'default' : 'ghost'}
+                size="sm"
+                className="h-[calc(100%-1px)] gap-1.5 rounded-md px-3 text-xs"
+                onClick={() => setActiveTab('calendar')}
+              >
+                <CalendarDays className="size-3.5" />
+                Calendar
+              </Button>
+              <Button
+                variant={activeTab === 'list' ? 'default' : 'ghost'}
+                size="sm"
+                className="h-[calc(100%-1px)] gap-1.5 rounded-md px-3 text-xs"
+                onClick={() => setActiveTab('list')}
+              >
+                <LayoutList className="size-3.5" />
+                List
+              </Button>
+            </div>
             <Badge variant="secondary" className="text-xs">
               <Clock className="size-3 mr-1" />
               {totalScheduled} scheduled
@@ -393,7 +419,11 @@ export function SchedulerView() {
           </div>
         </div>
 
-        {/* ─── Main 2-Column Layout ─── */}
+        {/* ─── Calendar View ─── */}
+        {activeTab === 'calendar' && <ContentCalendar />}
+
+        {/* ─── List View (Default) ─── */}
+        {activeTab === 'list' && (
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6">
           {/* ─── LEFT: Calendar ─── */}
           <div className="flex flex-col gap-6">
@@ -887,6 +917,7 @@ export function SchedulerView() {
             </Card>
           </div>
         </div>
+        )}
       </div>
     </TooltipProvider>
   );

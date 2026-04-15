@@ -12,7 +12,6 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Dialog,
   DialogContent,
@@ -30,11 +29,11 @@ import {
   Link2,
   Unlink,
   RefreshCw,
-  Eye,
-  Settings,
   Users,
   BarChart3,
   Shield,
+  Check,
+  Loader2,
 } from 'lucide-react';
 
 interface ConnectedAccountData {
@@ -65,8 +64,9 @@ export function ConnectedAccounts() {
   const [connectUsername, setConnectUsername] = useState('');
   const [connecting, setConnecting] = useState(false);
   const [syncingId, setSyncingId] = useState<string | null>(null);
-  const [disconnectingId, setDisconnectingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authStep, setAuthStep] = useState<'select' | 'auth' | 'done'>('select');
 
   useEffect(() => {
     async function fetchAccounts() {
@@ -74,7 +74,6 @@ export function ConnectedAccounts() {
         const res = await fetch('/api/accounts');
         const json = await res.json();
         if (json.success) {
-          // Map to our local type
           setAccounts(
             json.data.map((a: ConnectedAccountData) => ({
               ...a,
@@ -105,13 +104,11 @@ export function ConnectedAccounts() {
     return platformOptions.find((p) => p.key === platformKey);
   };
 
-  const connectedPlatformKeys = new Set(
-    accounts.map((a) => a.platform as PlatformKey)
-  );
-
-  const availablePlatforms = platformOptions.filter(
-    (p) => !connectedPlatformKeys.has(p.key)
-  );
+  // Count accounts per platform (allows multi-account)
+  const platformCounts: Record<string, number> = {};
+  for (const a of accounts) {
+    platformCounts[a.platform] = (platformCounts[a.platform] || 0) + 1;
+  }
 
   const totalFollowers = accounts.reduce(
     (sum, a) => sum + (a.followersCount || 0),
@@ -164,12 +161,26 @@ export function ConnectedAccounts() {
     return 'text-red-600 dark:text-red-400';
   };
 
+  const refreshAccounts = async () => {
+    const res = await fetch('/api/accounts');
+    const json = await res.json();
+    if (json.success) {
+      setAccounts(
+        json.data.map((a: ConnectedAccountData) => ({
+          ...a,
+          platform: a.platform as PlatformKey,
+        }))
+      );
+    }
+  };
+
   const handleConnect = async () => {
     if (!selectedPlatform || !connectUsername.trim()) return;
     setConnecting(true);
+    setAuthStep('auth');
     try {
-      // Simulate OAuth delay
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // Simulate OAuth authorization flow
+      await new Promise((resolve) => setTimeout(resolve, 2000));
       const platform = PLATFORMS[selectedPlatform];
       const res = await fetch('/api/accounts', {
         method: 'POST',
@@ -184,78 +195,53 @@ export function ConnectedAccounts() {
       });
       const json = await res.json();
       if (json.success) {
-        toast.success(`${platform.name} account connected successfully`);
-        // Refresh accounts
-        const accountsRes = await fetch('/api/accounts');
-        const accountsJson = await accountsRes.json();
-        if (accountsJson.success) {
-          setAccounts(
-            accountsJson.data.map((a: ConnectedAccountData) => ({
-              ...a,
-              platform: a.platform as PlatformKey,
-            }))
-          );
-        }
-        setConnectUsername('');
-        setSelectedPlatform(null);
-        setConnectOpen(false);
+        setAuthStep('done');
+        toast.success(`${platform.name} account "@${connectUsername.trim()}" connected successfully!`);
+        await refreshAccounts();
+        setTimeout(() => {
+          setConnectUsername('');
+          setSelectedPlatform(null);
+          setConnectOpen(false);
+          setAuthStep('select');
+        }, 1500);
       } else {
         toast.error('Failed to connect account');
+        setAuthStep('select');
       }
     } catch {
-      toast.error('Failed to connect account');
+      toast.error('Connection failed. Please try again.');
+      setAuthStep('select');
     } finally {
       setConnecting(false);
     }
   };
 
-  const handleDisconnect = async (accountId: string, accountName: string) => {
-    setDisconnectingId(accountId);
+  const handleDelete = async (accountId: string, accountName: string) => {
+    setDeletingId(accountId);
     try {
-      const res = await fetch('/api/accounts', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: accountId, isActive: false }),
+      const res = await fetch(`/api/accounts?id=${accountId}`, {
+        method: 'DELETE',
       });
       const json = await res.json();
       if (json.success) {
-        toast.success(`${accountName} disconnected`);
-        const accountsRes = await fetch('/api/accounts');
-        const accountsJson = await accountsRes.json();
-        if (accountsJson.success) {
-          setAccounts(
-            accountsJson.data.map((a: ConnectedAccountData) => ({
-              ...a,
-              platform: a.platform as PlatformKey,
-            }))
-          );
-        }
+        toast.success(`${accountName} removed successfully`);
+        await refreshAccounts();
       } else {
-        toast.error('Failed to disconnect account');
+        toast.error('Failed to remove account');
       }
     } catch {
-      toast.error('Failed to disconnect account');
+      toast.error('Failed to remove account');
     } finally {
-      setDisconnectingId(null);
+      setDeletingId(null);
     }
   };
 
   const handleSync = async (accountId: string, accountName: string) => {
     setSyncingId(accountId);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 1500));
       toast.success(`${accountName} synced successfully`);
-      // Refresh to update lastSyncedAt
-      const accountsRes = await fetch('/api/accounts');
-      const accountsJson = await accountsRes.json();
-      if (accountsJson.success) {
-        setAccounts(
-          accountsJson.data.map((a: ConnectedAccountData) => ({
-            ...a,
-            platform: a.platform as PlatformKey,
-          }))
-        );
-      }
+      await refreshAccounts();
     } catch {
       toast.error('Failed to sync account');
     } finally {
@@ -287,46 +273,33 @@ export function ConnectedAccounts() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Connected Accounts</h1>
           <p className="text-muted-foreground mt-1">
-            Manage your social media connections and integrations
+            Manage your social media connections. Connect multiple accounts per platform.
           </p>
         </div>
-        <Dialog open={connectOpen} onOpenChange={setConnectOpen}>
+        <Dialog open={connectOpen} onOpenChange={(open) => { setConnectOpen(open); if (!open) { setAuthStep('select'); setSelectedPlatform(null); setConnectUsername(''); } }}>
           <DialogTrigger asChild>
-            <Button className="gap-2" disabled={availablePlatforms.length === 0}>
+            <Button className="gap-2 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white hover:from-violet-700 hover:to-fuchsia-700 shadow-lg shadow-violet-500/20">
               <Link2 className="h-4 w-4" />
               Connect Account
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Connect a New Account</DialogTitle>
-              <DialogDescription>
-                Choose a platform to connect. You&apos;ll be redirected to authorize access.
-              </DialogDescription>
-            </DialogHeader>
-
-            {!selectedPlatform ? (
-              <div className="grid grid-cols-2 gap-3 py-4">
-                {platformOptions.map((platform) => {
-                  const isConnected = connectedPlatformKeys.has(platform.key);
-                  return (
+            {/* Step 1: Platform Selection */}
+            {authStep === 'select' && (
+              <>
+                <DialogHeader>
+                  <DialogTitle>Connect a New Account</DialogTitle>
+                  <DialogDescription>
+                    Choose a platform. You can connect multiple accounts per platform.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid grid-cols-2 gap-3 py-4">
+                  {platformOptions.map((platform) => (
                     <button
                       key={platform.key}
-                      disabled={isConnected}
                       onClick={() => setSelectedPlatform(platform.key)}
-                      className={`
-                        flex items-center gap-3 p-4 rounded-lg border text-left transition-all
-                        ${
-                          isConnected
-                            ? 'opacity-50 cursor-not-allowed bg-muted'
-                            : 'hover:shadow-md hover:border-foreground/20 cursor-pointer'
-                        }
-                      `}
-                      style={
-                        !isConnected
-                          ? { borderLeftWidth: '3px', borderLeftColor: platform.color }
-                          : {}
-                      }
+                      className="flex items-center gap-3 p-4 rounded-lg border text-left transition-all hover:shadow-md hover:border-foreground/20 cursor-pointer"
+                      style={{ borderLeftWidth: '3px', borderLeftColor: platform.color }}
                     >
                       <div
                         className="flex h-10 w-10 items-center justify-center rounded-lg text-white text-sm font-bold shrink-0"
@@ -337,86 +310,113 @@ export function ConnectedAccounts() {
                       <div className="min-w-0">
                         <p className="font-medium text-sm truncate">{platform.name}</p>
                         <p className="text-xs text-muted-foreground">
-                          {isConnected ? 'Connected' : 'Available'}
+                          {platformCounts[platform.key]
+                            ? `${platformCounts[platform.key]} connected`
+                            : 'Not connected'}
                         </p>
                       </div>
                     </button>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="space-y-4 py-4">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setSelectedPlatform(null);
-                    setConnectUsername('');
-                  }}
-                  className="gap-1 -ml-2"
-                >
-                  ← Back to platforms
-                </Button>
-                <div className="flex items-center gap-3 p-4 rounded-lg border" style={{ borderLeftWidth: '3px', borderLeftColor: getPlatformOption(selectedPlatform)?.color }}>
-                  <div
-                    className="flex h-12 w-12 items-center justify-center rounded-xl text-white text-lg font-bold"
-                    style={{ backgroundColor: getPlatformOption(selectedPlatform)?.color }}
-                  >
-                    {getPlatformOption(selectedPlatform)?.name.charAt(0)}
-                  </div>
-                  <div>
-                    <p className="font-semibold">{getPlatformOption(selectedPlatform)?.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Connect your account to start managing content
-                    </p>
-                  </div>
+                  ))}
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="connect-username">
-                    {getPlatformOption(selectedPlatform)?.name} Username or Email
-                  </Label>
-                  <Input
-                    id="connect-username"
-                    placeholder={`Enter your ${getPlatformOption(selectedPlatform)?.name} username`}
-                    value={connectUsername}
-                    onChange={(e) => setConnectUsername(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleConnect()}
-                  />
-                </div>
-                <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground space-y-1">
-                  <p className="font-medium text-foreground/80">What we&apos;ll need access to:</p>
-                  <ul className="list-disc list-inside space-y-0.5">
-                    <li>Read your profile information</li>
-                    <li>Post content on your behalf</li>
-                    <li>View basic analytics</li>
-                  </ul>
-                </div>
-              </div>
+              </>
             )}
 
-            {selectedPlatform && (
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setConnectOpen(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleConnect}
-                  disabled={!connectUsername.trim() || connecting}
-                  className="gap-2"
-                >
-                  {connecting ? (
-                    <>
-                      <RefreshCw className="h-4 w-4 animate-spin" />
-                      Connecting...
-                    </>
-                  ) : (
-                    <>
-                      <Link2 className="h-4 w-4" />
-                      Connect {getPlatformOption(selectedPlatform)?.name}
-                    </>
-                  )}
-                </Button>
-              </DialogFooter>
+            {/* Step 2: Authorization */}
+            {authStep === 'auth' && selectedPlatform && (
+              <>
+                <DialogHeader>
+                  <DialogTitle>Authorizing {getPlatformOption(selectedPlatform)?.name}</DialogTitle>
+                  <DialogDescription>
+                    Enter your username to complete the connection.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => { setSelectedPlatform(null); setAuthStep('select'); }}
+                    className="gap-1 -ml-2"
+                  >
+                    ← Back to platforms
+                  </Button>
+                  <div className="flex items-center gap-3 p-4 rounded-lg border" style={{ borderLeftWidth: '3px', borderLeftColor: getPlatformOption(selectedPlatform)?.color }}>
+                    <div
+                      className="flex h-12 w-12 items-center justify-center rounded-xl text-white text-lg font-bold"
+                      style={{ backgroundColor: getPlatformOption(selectedPlatform)?.color }}
+                    >
+                      {getPlatformOption(selectedPlatform)?.name.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="font-semibold">{getPlatformOption(selectedPlatform)?.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Connect your account to start managing content
+                      </p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="connect-username">
+                      {getPlatformOption(selectedPlatform)?.name} Username
+                    </Label>
+                    <Input
+                      id="connect-username"
+                      placeholder={`@your_${selectedPlatform}_handle`}
+                      value={connectUsername}
+                      onChange={(e) => setConnectUsername(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleConnect()}
+                      autoFocus
+                    />
+                  </div>
+                  <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground space-y-1">
+                    <p className="font-medium text-foreground/80 flex items-center gap-1.5">
+                      <Shield className="h-3.5 w-3.5" />
+                      Secure OAuth 2.0 Connection
+                    </p>
+                    <ul className="list-disc list-inside space-y-0.5 ml-4">
+                      <li>Read your profile information</li>
+                      <li>Post content on your behalf</li>
+                      <li>View basic analytics</li>
+                    </ul>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setConnectOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleConnect}
+                    disabled={!connectUsername.trim() || connecting}
+                    className="gap-2"
+                    style={{ backgroundColor: getPlatformOption(selectedPlatform)?.color }}
+                  >
+                    {connecting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Authorizing...
+                      </>
+                    ) : (
+                      <>
+                        <Link2 className="h-4 w-4" />
+                        Connect {getPlatformOption(selectedPlatform)?.name}
+                      </>
+                    )}
+                  </Button>
+                </DialogFooter>
+              </>
+            )}
+
+            {/* Step 3: Success */}
+            {authStep === 'done' && (
+              <div className="flex flex-col items-center justify-center py-12 gap-4">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30">
+                  <Check className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <div className="text-center">
+                  <p className="font-semibold text-lg">Account Connected!</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Your {getPlatformOption(selectedPlatform)?.name} account is now linked.
+                  </p>
+                </div>
+              </div>
             )}
           </DialogContent>
         </Dialog>
@@ -431,9 +431,7 @@ export function ConnectedAccounts() {
                 <Link2 className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold">
-                  {accounts.length}
-                </p>
+                <p className="text-2xl font-bold">{accounts.length}</p>
                 <p className="text-xs text-muted-foreground">
                   Connected Account{accounts.length !== 1 ? 's' : ''}
                 </p>
@@ -449,12 +447,8 @@ export function ConnectedAccounts() {
                 <Users className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold">
-                  {formatNumber(totalFollowers)}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Total Followers
-                </p>
+                <p className="text-2xl font-bold">{formatNumber(totalFollowers)}</p>
+                <p className="text-xs text-muted-foreground">Total Followers</p>
               </div>
             </div>
           </CardContent>
@@ -467,12 +461,8 @@ export function ConnectedAccounts() {
                 <BarChart3 className="h-5 w-5 text-amber-600 dark:text-amber-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold">
-                  {activeAccounts}/{accounts.length}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Active Accounts
-                </p>
+                <p className="text-2xl font-bold">{activeAccounts}/{accounts.length}</p>
+                <p className="text-xs text-muted-foreground">Active Accounts</p>
               </div>
             </div>
           </CardContent>
@@ -480,46 +470,36 @@ export function ConnectedAccounts() {
       </div>
 
       {/* Platform Coverage */}
-      {accounts.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Platform Coverage</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {platformOptions.map((platform) => {
-                const isConnected = connectedPlatformKeys.has(platform.key);
-                return (
-                  <Badge
-                    key={platform.key}
-                    variant={isConnected ? 'default' : 'outline'}
-                    className={`
-                      gap-1.5 text-xs
-                      ${isConnected ? '' : 'text-muted-foreground'}
-                    `}
-                    style={
-                      isConnected
-                        ? {
-                            backgroundColor: platform.color + '15',
-                            color: platform.color,
-                            borderColor: platform.color + '30',
-                          }
-                        : {}
-                    }
-                  >
-                    <span
-                      className={`h-2 w-2 rounded-full ${
-                        isConnected ? 'bg-emerald-500' : 'bg-zinc-300 dark:bg-zinc-600'
-                      }`}
-                    />
-                    {platform.name}
-                  </Badge>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-medium">Platform Coverage</CardTitle>
+          <CardDescription>{Object.keys(platformCounts).length} of {platformOptions.length} platforms connected</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-2">
+            {platformOptions.map((platform) => {
+              const count = platformCounts[platform.key] || 0;
+              const isConnected = count > 0;
+              return (
+                <Badge
+                  key={platform.key}
+                  variant={isConnected ? 'default' : 'outline'}
+                  className="gap-1.5 text-xs"
+                  style={
+                    isConnected
+                      ? { backgroundColor: platform.color + '15', color: platform.color, borderColor: platform.color + '30' }
+                      : {}
+                  }
+                >
+                  <span className={`h-2 w-2 rounded-full ${isConnected ? 'bg-emerald-500' : 'bg-zinc-300 dark:bg-zinc-600'}`} />
+                  {platform.name}
+                  {count > 1 && <span className="opacity-60">({count})</span>}
+                </Badge>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Connected Accounts Grid */}
       {accounts.length > 0 && (
@@ -530,11 +510,7 @@ export function ConnectedAccounts() {
             const brandColor = platformInfo.color;
 
             return (
-              <Card
-                key={account.id}
-                className="overflow-hidden transition-shadow hover:shadow-md"
-                style={{ borderLeftWidth: '4px', borderLeftColor: brandColor }}
-              >
+              <Card key={account.id} className="overflow-hidden transition-shadow hover:shadow-md" style={{ borderLeftWidth: '4px', borderLeftColor: brandColor }}>
                 <CardContent className="p-0">
                   {/* Card Header */}
                   <div className="p-4 pb-0">
@@ -559,13 +535,7 @@ export function ConnectedAccounts() {
                                   : 'border-zinc-300 text-zinc-500 dark:border-zinc-600 dark:text-zinc-400'
                               }`}
                             >
-                              <span
-                                className={`h-1.5 w-1.5 rounded-full mr-1 ${
-                                  account.isActive
-                                    ? 'bg-emerald-500'
-                                    : 'bg-zinc-400 dark:bg-zinc-500'
-                                }`}
-                              />
+                              <span className={`h-1.5 w-1.5 rounded-full mr-1 ${account.isActive ? 'bg-emerald-500' : 'bg-zinc-400'}`} />
                               {account.isActive ? 'Active' : 'Inactive'}
                             </Badge>
                           </div>
@@ -577,60 +547,39 @@ export function ConnectedAccounts() {
                     </div>
                   </div>
 
+                  {/* Stats */}
                   <div className="px-4 pt-3">
-                    {/* Engagement Stats */}
                     <div className="grid grid-cols-3 gap-2">
                       <div className="rounded-lg bg-muted/50 p-2.5 text-center">
-                        <p className="text-base font-bold">
-                          {formatNumber(account.followersCount)}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                          Followers
-                        </p>
+                        <p className="text-base font-bold">{formatNumber(account.followersCount)}</p>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Followers</p>
                       </div>
                       <div className="rounded-lg bg-muted/50 p-2.5 text-center">
-                        <p className="text-base font-bold">
-                          {formatNumber(account.followingCount)}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                          Following
-                        </p>
+                        <p className="text-base font-bold">{formatNumber(account.followingCount)}</p>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Following</p>
                       </div>
                       <div className="rounded-lg bg-muted/50 p-2.5 text-center">
                         <p className="text-base font-bold">
                           {account.followersCount > 0
                             ? ((account.followingCount / account.followersCount) * 100).toFixed(1)
-                            : 0}
-                          %
+                            : 0}%
                         </p>
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                          Ratio
-                        </p>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Ratio</p>
                       </div>
                     </div>
                   </div>
 
                   <Separator className="my-3 mx-4" />
 
-                  {/* Footer with sync status & actions */}
+                  {/* Footer */}
                   <div className="px-4 pb-4">
                     <div className="flex items-center justify-between">
-                      <div
-                        className={`flex items-center gap-1.5 text-xs ${getSyncStatusColor(
-                          (account as ConnectedAccountData).lastSyncedAt
-                        )}`}
-                      >
-                        <RefreshCw
-                          className={`h-3 w-3 ${
-                            syncingId === account.id ? 'animate-spin' : ''
-                          }`}
-                        />
+                      <div className={`flex items-center gap-1.5 text-xs ${getSyncStatusColor((account as ConnectedAccountData).lastSyncedAt)}`}>
+                        <RefreshCw className={`h-3 w-3 ${syncingId === account.id ? 'animate-spin' : ''}`} />
                         <span>
                           {syncingId === account.id
                             ? 'Syncing...'
-                            : `Synced ${getTimeAgo(
-                                (account as ConnectedAccountData).lastSyncedAt
-                              )}`}
+                            : `Synced ${getTimeAgo((account as ConnectedAccountData).lastSyncedAt)}`}
                         </span>
                       </div>
                       <div className="flex items-center gap-1">
@@ -638,44 +587,26 @@ export function ConnectedAccounts() {
                           variant="ghost"
                           size="sm"
                           className="h-8 w-8 p-0"
-                          onClick={() =>
-                            handleSync(
-                              account.id,
-                              account.displayName || account.username
-                            )
-                          }
+                          onClick={() => handleSync(account.id, account.displayName || account.username)}
                           disabled={syncingId === account.id}
-                          title="Sync account"
+                          title="Sync now"
                         >
-                          <RefreshCw
-                            className={`h-3.5 w-3.5 ${
-                              syncingId === account.id ? 'animate-spin' : ''
-                            }`}
-                          />
+                          <RefreshCw className={`h-3.5 w-3.5 ${syncingId === account.id ? 'animate-spin' : ''}`} />
                         </Button>
-                        {account.isActive && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
-                            onClick={() =>
-                              handleDisconnect(
-                                account.id,
-                                account.displayName || account.username
-                              )
-                            }
-                            disabled={disconnectingId === account.id}
-                            title="Disconnect account"
-                          >
-                            <Unlink
-                              className={`h-3.5 w-3.5 ${
-                                disconnectingId === account.id
-                                  ? 'animate-pulse'
-                                  : ''
-                              }`}
-                            />
-                          </Button>
-                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                          onClick={() => handleDelete(account.id, account.displayName || account.username)}
+                          disabled={deletingId === account.id}
+                          title="Remove account"
+                        >
+                          {deletingId === account.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Unlink className="h-3.5 w-3.5" />
+                          )}
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -696,18 +627,16 @@ export function ConnectedAccounts() {
             <div className="text-center space-y-1">
               <h3 className="font-semibold text-lg">No Accounts Connected</h3>
               <p className="text-sm text-muted-foreground max-w-sm">
-                Connect your social media accounts to start managing your content, scheduling
-                posts, and tracking analytics all in one place.
+                Connect your social media accounts to start managing content, scheduling posts, and tracking analytics.
               </p>
             </div>
-            <Dialog open={connectOpen} onOpenChange={setConnectOpen}>
-              <DialogTrigger asChild>
-                <Button className="gap-2">
-                  <Link2 className="h-4 w-4" />
-                  Connect Your First Account
-                </Button>
-              </DialogTrigger>
-            </Dialog>
+            <Button
+                onClick={() => setConnectOpen(true)}
+                className="gap-2 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white"
+              >
+                <Link2 className="h-4 w-4" />
+                Connect Your First Account
+              </Button>
           </CardContent>
         </Card>
       )}

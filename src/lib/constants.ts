@@ -88,13 +88,13 @@ export const TEAM_ROLES = {
 
 export const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: 'LayoutDashboard' },
+  { id: 'inbox', label: 'Inbox', icon: 'Inbox' },
   { id: 'compose', label: 'Compose', icon: 'PenSquare' },
   { id: 'scheduler', label: 'Scheduler', icon: 'CalendarDays' },
   { id: 'analytics', label: 'Analytics', icon: 'BarChart3' },
   { id: 'ai-tools', label: 'AI Tools', icon: 'Sparkles' },
   { id: 'accounts', label: 'Accounts', icon: 'Link2' },
   { id: 'team', label: 'Team', icon: 'Users' },
-  { id: 'architecture', label: 'Architecture', icon: 'LayoutGrid' },
 ] as const;
 
 export type NavItem = (typeof NAV_ITEMS)[number]['id'];

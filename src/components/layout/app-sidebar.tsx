@@ -5,13 +5,13 @@ import { useTheme } from 'next-themes';
 import { NAV_ITEMS, PLATFORMS, type NavItem } from '@/lib/constants';
 import {
   LayoutDashboard,
+  Inbox,
   PenSquare,
   CalendarDays,
   BarChart3,
   Sparkles,
   Link2,
   Users,
-  LayoutGrid,
   ChevronLeft,
   ChevronRight,
   Sun,
@@ -37,13 +37,13 @@ import {
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   LayoutDashboard,
+  Inbox,
   PenSquare,
   CalendarDays,
   BarChart3,
   Sparkles,
   Link2,
   Users,
-  LayoutGrid,
 };
 
 const PLATFORM_ICON_COLORS: Record<string, string> = {
@@ -90,7 +90,7 @@ export function AppSidebar() {
             {NAV_ITEMS.map((item, index) => {
               const Icon = ICON_MAP[item.icon] || LayoutDashboard;
               const isActive = activeView === item.id;
-              const showSeparator = item.id === 'architecture';
+              const showSeparator = item.id === 'ai-tools';
 
               const button = (
                 <button
