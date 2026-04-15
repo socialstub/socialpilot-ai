@@ -1,8 +1,15 @@
 import { NextResponse } from 'next/server';
-import { createLLM } from 'z-ai-web-dev-sdk';
+import ZAI from 'z-ai-web-dev-sdk';
 
-// Initialize the LLM client
-const llm = createLLM();
+// Lazy singleton for LLM client
+let zaiInstance: Awaited<ReturnType<typeof ZAI.create>> | null = null;
+
+async function getLLM() {
+  if (!zaiInstance) {
+    zaiInstance = await ZAI.create();
+  }
+  return zaiInstance;
+}
 
 // AI-powered content generation endpoint (uses z-ai-web-dev-sdk)
 export async function POST(request: Request) {
@@ -59,11 +66,11 @@ async function generateCaptionWithAI(topic: string, platform: string, tone: stri
   };
 
   try {
-    const response = await llm.chat({
-      model: 'deepseek-chat',
+    const zai = await getLLM();
+    const response = await zai.chat.completions.create({
       messages: [
         {
-          role: 'system',
+          role: 'assistant',
           content:
             'You are a world-class social media content strategist with expertise in crafting viral, engaging posts across all major platforms. You understand platform-specific nuances, audience psychology, and what drives engagement. Always produce original, authentic content that feels human — never generic or robotic. Include relevant emojis naturally but don\'t overdo them.',
         },
@@ -72,6 +79,7 @@ async function generateCaptionWithAI(topic: string, platform: string, tone: stri
           content: `Generate a social media caption for the following:\n\n- Topic: ${topic}\n- Platform: ${platformLabel}\n- Tone: ${toneLabel}\n- Length: ${lengthLabel}\n\nGuidelines:\n${lengthGuidance[lengthLabel] || lengthGuidance.medium}\nTailor the style to ${platformLabel}\'s culture and audience. Make it feel native to the platform. Include 2-4 relevant hashtags at the end.`,
         },
       ],
+      thinking: { type: 'disabled' },
     });
 
     const text = response.choices[0]?.message?.content?.trim();
@@ -96,11 +104,11 @@ async function rewriteForPlatformWithAI(content: string, platform: string, tone:
   };
 
   try {
-    const response = await llm.chat({
-      model: 'deepseek-chat',
+    const zai = await getLLM();
+    const response = await zai.chat.completions.create({
       messages: [
         {
-          role: 'system',
+          role: 'assistant',
           content:
             'You are a social media content adapter. Your job is to take existing content and rewrite it to perfectly fit a specific platform\'s style, constraints, and audience. Preserve the core message while optimizing for maximum engagement on the target platform.',
         },
@@ -109,6 +117,7 @@ async function rewriteForPlatformWithAI(content: string, platform: string, tone:
           content: `Rewrite the following content for ${platformLabel}:\n\nOriginal content: "${content}"\n\nTarget tone: ${toneLabel}\nPlatform constraints: ${platformConstraints[platform] || 'Keep it engaging and native to the platform.'}\n\nRewrite the content to feel natural and native to ${platformLabel}. Do NOT wrap in quotes.`,
         },
       ],
+      thinking: { type: 'disabled' },
     });
 
     const text = response.choices[0]?.message?.content?.trim();
@@ -124,11 +133,11 @@ async function generateHashtagsWithAI(topic: string, platform: string): Promise<
   const platformLabel = platform ? platform.charAt(0).toUpperCase() + platform.slice(1) : 'General';
 
   try {
-    const response = await llm.chat({
-      model: 'deepseek-chat',
+    const zai = await getLLM();
+    const response = await zai.chat.completions.create({
       messages: [
         {
-          role: 'system',
+          role: 'assistant',
           content:
             'You are a social media hashtag expert. You know which hashtags perform well on each platform and understand hashtag strategy — mixing broad, niche, and trending tags. Always respond with valid JSON only, no markdown, no extra text.',
         },
@@ -137,6 +146,7 @@ async function generateHashtagsWithAI(topic: string, platform: string): Promise<
           content: `Generate relevant hashtags for the following:\n\n- Topic/Content: "${topic}"\n- Platform: ${platformLabel}\n\nRespond ONLY with a JSON object in this exact format (no markdown, no code fences):\n{"hashtags": ["#tag1", "#tag2", "#tag3", "#tag4", "#tag5", "#tag6", "#tag7", "#tag8", "#tag9", "#tag10", "#tag11", "#tag12", "#tag13", "#tag14", "#tag15"], "performance_score": <number 60-95>, "trending": ["#trending1", "#trending2", "#trending3"]}\n\nGenerate 15 hashtags total. Include a mix of high-volume, niche, and platform-specific tags. The performance_score estimates how well these tags would perform (60-95). The trending array should have 3 tags that are currently trending.`,
         },
       ],
+      thinking: { type: 'disabled' },
     });
 
     const raw = response.choices[0]?.message?.content?.trim();
@@ -157,11 +167,11 @@ async function generateHashtagsWithAI(topic: string, platform: string): Promise<
 
 async function generateAutoReplyWithAI(commentContent: string): Promise<string> {
   try {
-    const response = await llm.chat({
-      model: 'deepseek-chat',
+    const zai = await getLLM();
+    const response = await zai.chat.completions.create({
       messages: [
         {
-          role: 'system',
+          role: 'assistant',
           content:
             'You are a social media community manager for a brand. You reply to comments in a friendly, genuine, and engaging way. Your replies should feel human — not corporate. Keep replies concise (1-2 sentences). Use emojis occasionally when it feels natural. Be helpful, appreciative, and conversational. Never be defensive or dismissive.',
         },
@@ -170,6 +180,7 @@ async function generateAutoReplyWithAI(commentContent: string): Promise<string> 
           content: `Generate a reply to this social media comment:\n\n"${commentContent}"\n\nWrite a friendly, contextual reply that acknowledges what the person said. Keep it brief and natural. Do NOT wrap in quotes.`,
         },
       ],
+      thinking: { type: 'disabled' },
     });
 
     const text = response.choices[0]?.message?.content?.trim();

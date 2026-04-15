@@ -188,3 +188,27 @@ Stage Summary:
 - API route already fully functional (GET + POST) with no changes needed
 - Content composer Templates tab icon updated from LayoutGrid to BookOpen
 - Zero lint errors
+
+---
+Task ID: fix-sdk-import
+Agent: Main Architect
+Task: Fix z-ai-web-dev-sdk import error causing build failure
+
+Work Log:
+- Ran `npx next build` and discovered build error: `Export createLLM doesn't exist in target module` in /src/app/api/ai/route.ts
+- Investigated SDK exports: `node -e "const sdk = require('z-ai-web-dev-sdk'); console.log(Object.keys(sdk))"` -> only has default export
+- Consulted LLM skill documentation for correct SDK usage pattern
+- Fixed 4 issues in route.ts:
+  1. Changed `import { createLLM } from 'z-ai-web-dev-sdk'` -> `import ZAI from 'z-ai-web-dev-sdk'` (default import, not named)
+  2. Changed initialization from `const llm = createLLM()` -> lazy singleton `async function getLLM()` using `await ZAI.create()`
+  3. Changed API calls from `llm.chat({ model: 'deepseek-chat', messages })` -> `zai.chat.completions.create({ messages, thinking: { type: 'disabled' } })`
+  4. Changed system prompt role from `role: 'system'` -> `role: 'assistant'` (SDK convention)
+- Verified lint passes with zero errors
+- Verified dev server starts, compiles, and serves homepage with HTTP 200
+- Verified all API routes return 200 (accounts, posts, activities, team, analytics)
+
+Stage Summary:
+- Root cause: z-ai-web-dev-sdk only exports a default class `ZAI`, not named exports like `createLLM`
+- The incorrect import caused Turbopack/webpack build failure, preventing the app from compiling at all
+- All 4 AI functions (generate_caption, rewrite, hashtags, auto_reply) now use correct SDK API with fallback to mock data
+- Application compiles and runs successfully
