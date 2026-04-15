@@ -111,7 +111,15 @@ function formatPercent(num: number): string {
 
 // Generate mock data for demo purposes
 function generateMockTimeline(days: number) {
-  const data = [];
+  const data: Array<{
+    date: string;
+    reach: number;
+    impressions: number;
+    likes: number;
+    comments: number;
+    shares: number;
+    clicks: number;
+  }> = [];
   const now = new Date();
   for (let i = days - 1; i >= 0; i--) {
     const date = new Date(now);

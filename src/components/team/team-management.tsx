@@ -385,7 +385,7 @@ export function TeamManagement() {
                                   {tag}
                                 </span>
                               ))}
-                            {post.content.match(/#\w+/g)?.length > 5 && (
+                            {(post.content.match(/#\w+/g) ?? []).length > 5 && (
                               <span className="text-xs text-muted-foreground">
                                 +{post.content.match(/#\w+/g)!.length - 5} more
                               </span>
