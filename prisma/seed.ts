@@ -54,9 +54,8 @@ async function main() {
     { platform: 'youtube' as PlatformKey, platformUserId: 'yt-001', username: 'SocialPilot', displayName: 'SocialPilot Channel', followersCount: 12400, followingCount: 45 },
   ];
 
-  const createdAccounts = [];
   for (const acc of accountsData) {
-    const account = await db.socialAccount.upsert({
+    await db.socialAccount.upsert({
       where: { id: `acc-${acc.platform}` },
       update: {},
       create: {
@@ -69,7 +68,6 @@ async function main() {
         lastSyncedAt: new Date(),
       },
     });
-    createdAccounts.push(account);
   }
 
   // Create posts
@@ -230,12 +228,12 @@ async function main() {
         data: {
           date,
           postId: post.id,
-          reach: Math.floor(post.reach * (0.1 + Math.random() * 0.15)),
-          impressions: Math.floor(post.reach * (0.2 + Math.random() * 0.3)),
-          likes: Math.floor(post.likes * (0.08 + Math.random() * 0.12)),
-          comments: Math.floor(post.comments * (0.1 + Math.random() * 0.15)),
-          shares: Math.floor(post.shares * (0.08 + Math.random() * 0.12)),
-          clicks: Math.floor(post.clicks * (0.1 + Math.random() * 0.15)),
+          reach: Math.floor((post.reach || 0) * (0.1 + Math.random() * 0.15)),
+          impressions: Math.floor((post.reach || 0) * (0.2 + Math.random() * 0.3)),
+          likes: Math.floor((post.likes || 0) * (0.08 + Math.random() * 0.12)),
+          comments: Math.floor((post.comments || 0) * (0.1 + Math.random() * 0.15)),
+          shares: Math.floor((post.shares || 0) * (0.08 + Math.random() * 0.12)),
+          clicks: Math.floor((post.clicks || 0) * (0.1 + Math.random() * 0.15)),
           saves: Math.floor(Math.random() * 50),
         },
       });

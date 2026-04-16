@@ -1152,7 +1152,7 @@ function PlatformPreview({
       </div>
 
       {/* Character count bar */}
-      {hasContent && !isPlaceholder && (
+      {content.trim().length > 0 && !isPlaceholder && (
         <div className="px-3 py-1.5 border-t bg-muted/30">
           <div className="flex items-center justify-between mb-1">
             <span className="text-[10px] text-muted-foreground">
