@@ -50,6 +50,8 @@ test
 prompt
 
 server.log
+*.db
+*.db-journal
 # Skills directory
 /skills/
 
@@ -60,5 +62,14 @@ db/*.db-journal
 # Mini services
 mini-services/node_modules
 
-# Keepalive script (dev only)
+# Dev-only
 keepalive.sh
+upload/
+agent-ctx/
+examples/
+docs/
+download/
+scripts/
+
+# Mini services (run separately)
+mini-services/

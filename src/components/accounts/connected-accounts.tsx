@@ -54,6 +54,7 @@ import {
   AlertTriangle,
   Zap,
 } from 'lucide-react';
+import { PlatformIcon } from '@/components/icons/platform-icons';
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -452,8 +453,8 @@ export function ConnectedAccounts() {
                       className="group relative flex items-center gap-3 p-4 rounded-xl border text-left transition-all duration-200 hover:shadow-lg hover:scale-[1.02] hover:border-foreground/20 cursor-pointer active:scale-[0.98]"
                       style={{ borderLeftWidth: '4px', borderLeftColor: platform.color }}
                     >
-                      <div className="flex h-11 w-11 items-center justify-center rounded-xl text-white text-sm font-bold shrink-0 shadow-sm" style={{ backgroundColor: platform.color }}>
-                        {platform.name.charAt(0)}
+                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white dark:bg-zinc-900 shrink-0 shadow-sm p-2">
+                        <PlatformIcon platform={platform.key} size={28} />
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="font-semibold text-sm truncate">{platform.name}</p>
@@ -488,8 +489,8 @@ export function ConnectedAccounts() {
                 </Button>
 
                 <div className="flex items-center gap-4 p-4 rounded-xl border" style={{ borderLeftWidth: '4px', borderLeftColor: selectedPlatformOption.color }}>
-                  <div className="flex h-14 w-14 items-center justify-center rounded-xl text-white text-xl font-bold shadow-md" style={{ backgroundColor: selectedPlatformOption.color }}>
-                    {selectedPlatformOption.name.charAt(0)}
+                  <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-white dark:bg-zinc-900 shadow-md p-2">
+                    <PlatformIcon platform={selectedPlatform!} size={36} />
                   </div>
                   <div>
                     <p className="font-bold">{selectedPlatformOption.name}</p>
@@ -583,8 +584,8 @@ export function ConnectedAccounts() {
                 )}
 
                 <div className="flex items-center gap-4 p-4 rounded-xl border" style={{ borderLeftWidth: '4px', borderLeftColor: selectedPlatformOption.color }}>
-                  <div className="flex h-14 w-14 items-center justify-center rounded-xl text-white text-xl font-bold shadow-md" style={{ backgroundColor: selectedPlatformOption.color }}>
-                    {selectedPlatformOption.name.charAt(0)}
+                  <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-white dark:bg-zinc-900 shadow-md p-2">
+                    <PlatformIcon platform={selectedPlatform!} size={36} />
                   </div>
                   <div>
                     <p className="font-bold">{selectedPlatformOption.name}</p>
@@ -629,8 +630,8 @@ export function ConnectedAccounts() {
           {authStep === 'authorizing' && selectedPlatform && selectedPlatformOption && (
             <div className="py-8 space-y-6">
               <div className="flex flex-col items-center gap-4">
-                <div className="flex h-16 w-16 items-center justify-center rounded-2xl text-white text-2xl font-bold shadow-lg" style={{ backgroundColor: selectedPlatformOption.color }}>
-                  {selectedPlatformOption.name.charAt(0)}
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white dark:bg-zinc-900 shadow-lg p-2">
+                  <PlatformIcon platform={selectedPlatform!} size={40} />
                 </div>
                 <div className="text-center space-y-1">
                   <p className="font-bold text-lg">Connecting to {selectedPlatformOption.name}</p>
@@ -656,8 +657,8 @@ export function ConnectedAccounts() {
                   <Check className="h-10 w-10 text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <div className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full bg-white dark:bg-zinc-800 shadow-md">
-                  <div className="h-5 w-5 rounded-md flex items-center justify-center text-white text-[10px] font-bold" style={{ backgroundColor: selectedPlatformOption.color }}>
-                    {selectedPlatformOption.name.charAt(0)}
+                  <div className="h-5 w-5 flex items-center justify-center">
+                    <PlatformIcon platform={selectedPlatform!} size={16} />
                   </div>
                 </div>
               </div>
@@ -789,8 +790,8 @@ export function ConnectedAccounts() {
                   <div className="p-4 pb-0">
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-xl text-white text-base font-bold shrink-0 shadow-sm" style={{ backgroundColor: platformInfo.color }}>
-                          {platformInfo.name.charAt(0)}
+                        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white dark:bg-zinc-900 shrink-0 shadow-sm p-2">
+                          <PlatformIcon platform={account.platform as string} size={28} />
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">

@@ -27,11 +27,6 @@ import {
   Zap,
   Calendar,
   Activity,
-  Instagram,
-  Facebook,
-  Linkedin,
-  Youtube,
-  Music,
   PenSquare,
   Link2,
   BarChart3,
@@ -42,6 +37,7 @@ import {
   Flame,
   ArrowRight,
 } from 'lucide-react';
+import { PlatformIcon, getPlatformColor } from '@/components/icons/platform-icons';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -128,37 +124,9 @@ function formatDateShort(dateString: string): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-function getPlatformIcon(platform: string) {
-  const lower = platform.toLowerCase();
-  switch (lower) {
-    case 'instagram':
-      return Instagram;
-    case 'facebook':
-      return Facebook;
-    case 'linkedin':
-      return Linkedin;
-    case 'youtube':
-      return Youtube;
-    case 'tiktok':
-      return Music;
-    default:
-      return Activity;
-  }
-}
 
-function getPlatformColor(platform: string): string {
-  const lower = platform.toLowerCase();
-  const colors: Record<string, string> = {
-    instagram: '#E4405F',
-    facebook: '#1877F2',
-    twitter: '#000000',
-    linkedin: '#0A66C2',
-    tiktok: '#000000',
-    youtube: '#FF0000',
-    multi: '#8B5CF6',
-  };
-  return colors[lower] || '#6B7280';
-}
+
+
 
 function getActivityIcon(type: string) {
   const lower = type.toLowerCase();
@@ -572,7 +540,6 @@ export function DashboardOverview() {
                 ) : (
                   <div className="space-y-2.5">
                     {scheduledPosts.map((post) => {
-                      const PlatformIcon = getPlatformIcon(post.platform);
                       const platformColor = getPlatformColor(post.platform);
                       const scheduledDate = post.scheduledAt ? new Date(post.scheduledAt) : null;
                       const timeUntil = scheduledDate
@@ -596,7 +563,7 @@ export function DashboardOverview() {
                             className="flex items-center justify-center w-7 h-7 rounded-md shrink-0"
                             style={{ backgroundColor: platformColor + '15', color: platformColor }}
                           >
-                            <PlatformIcon className="h-3.5 w-3.5" />
+                            <PlatformIcon platform={post.platform} size={14} />
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-medium truncate">
@@ -628,7 +595,6 @@ export function DashboardOverview() {
               <CardContent className="px-4 pb-4">
                 <div className="space-y-2.5">
                   {ENGAGEMENT_ALERTS.map((alert, idx) => {
-                    const PlatformIcon = getPlatformIcon(alert.platform);
                     const platformColor = getPlatformColor(alert.platform);
                     return (
                       <motion.div
@@ -642,7 +608,7 @@ export function DashboardOverview() {
                           className="flex items-center justify-center w-7 h-7 rounded-md shrink-0 mt-0.5"
                           style={{ backgroundColor: platformColor + '15', color: platformColor }}
                         >
-                          <PlatformIcon className="h-3.5 w-3.5" />
+                          <PlatformIcon platform={alert.platform} size={14} />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-xs leading-relaxed text-foreground">{alert.message}</p>
@@ -877,7 +843,6 @@ export function DashboardOverview() {
                   </div>
                 ) : (
                   topPosts.map((post, index) => {
-                    const PlatformIcon = getPlatformIcon(post.platform);
                     const platformColor = getPlatformColor(post.platform);
                     return (
                       <div
@@ -907,7 +872,7 @@ export function DashboardOverview() {
                               className="flex items-center justify-center w-5 h-5 rounded"
                               style={{ backgroundColor: platformColor + '20', color: platformColor }}
                             >
-                              <PlatformIcon className="h-3 w-3" />
+                              <PlatformIcon platform={post.platform} size={12} />
                             </div>
                             {post.title && (
                               <span className="text-sm font-medium truncate">{post.title}</span>

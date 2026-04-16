@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { useAppStore } from '@/stores/app-store';
+import { useState, useEffect } from 'react';
 import { PLATFORMS, type PlatformKey } from '@/lib/constants';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,9 +12,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { toast } from 'sonner';
 import {
   Sparkles,
   Wand2,
@@ -55,7 +55,7 @@ interface HashtagResult {
 
 interface CommentItem {
   id: string;
-  platform: PlatformKey;
+  platform: string;
   content: string;
   authorName: string;
   authorAvatar?: string;
@@ -74,142 +74,54 @@ interface TrendItem {
   description: string;
 }
 
-interface HashtagGroup {
-  id: string;
-  name: string;
-  hashtags: string[];
-  platform: PlatformKey;
+// ─── API Response Types ─────────────────────────────────────────────────────
+
+interface AIApiResponse {
+  success: boolean;
+  data: string;
+  error?: string;
 }
 
-// ─── Mock Data ──────────────────────────────────────────────────────────────
+interface HashtagsApiResponse {
+  hashtags: string[];
+  performance_score: number;
+  trending: string[];
+}
 
-const MOCK_TRENDS: TrendItem[] = [
-  {
-    id: 't1',
-    name: 'AI-Powered Marketing',
-    growth: 340,
-    category: 'Technology',
-    velocity: 'high',
-    postsCount: 125000,
-    description: 'Brands leveraging AI tools for content creation and campaign optimization.',
-  },
-  {
-    id: 't2',
-    name: 'Sustainable Fashion',
-    growth: 185,
-    category: 'Lifestyle',
-    velocity: 'high',
-    postsCount: 89000,
-    description: 'Eco-friendly fashion choices and sustainable brand practices.',
-  },
-  {
-    id: 't3',
-    name: 'Remote Work Culture',
-    growth: 120,
-    category: 'Business',
-    velocity: 'medium',
-    postsCount: 67000,
-    description: 'Work-from-home productivity tips and digital nomad lifestyle.',
-  },
-  {
-    id: 't4',
-    name: 'Short-Form Video',
-    growth: 95,
-    category: 'Entertainment',
-    velocity: 'medium',
-    postsCount: 210000,
-    description: 'Viral video trends on TikTok, Reels, and Shorts.',
-  },
-  {
-    id: 't5',
-    name: 'Plant-Based Recipes',
-    growth: 78,
-    category: 'Food',
-    velocity: 'low',
-    postsCount: 45000,
-    description: 'Creative plant-based meals and vegan cooking hacks.',
-  },
-  {
-    id: 't6',
-    name: 'Mindful Productivity',
-    growth: 55,
-    category: 'Wellness',
-    velocity: 'low',
-    postsCount: 32000,
-    description: 'Focus techniques, digital detox, and intentional living.',
-  },
-];
+interface TrendApiResponse {
+  topic: string;
+  trend: string;
+  category: string;
+  velocity: string;
+}
 
-const MOCK_COMMENTS: CommentItem[] = [
-  {
-    id: 'c1',
-    platform: 'instagram',
-    content: 'This is exactly what I needed! Your tips on content scheduling are incredible 🙌',
-    authorName: 'sarah_creates',
-    authorAvatar: '',
-    createdAt: '2 min ago',
-    isReplied: false,
-  },
-  {
-    id: 'c2',
-    platform: 'facebook',
-    content: 'Can you do a deep dive on hashtag strategy for 2025?',
-    authorName: 'MarketingMike',
-    authorAvatar: '',
-    createdAt: '15 min ago',
-    isReplied: false,
-  },
-  {
-    id: 'c3',
-    platform: 'linkedin',
-    content: 'Great insights! I shared this with my entire team. Would love a follow-up on analytics best practices.',
-    authorName: 'Jennifer Chen',
-    authorAvatar: '',
-    createdAt: '1 hour ago',
-    isReplied: false,
-  },
-  {
-    id: 'c4',
-    platform: 'twitter',
-    content: 'disagree with the posting frequency recommendation. less is more imo',
-    authorName: '@digital_nomad_joe',
-    authorAvatar: '',
-    createdAt: '2 hours ago',
-    isReplied: false,
-  },
-  {
-    id: 'c5',
-    platform: 'tiktok',
-    content: 'Made this recipe and it turned out amazing!! Thanks for sharing 💕',
-    authorName: 'foodie_anna',
-    authorAvatar: '',
-    createdAt: '3 hours ago',
-    isReplied: false,
-  },
-];
+// ─── Helpers ────────────────────────────────────────────────────────────────
 
-const MOCK_HASHTAG_GROUPS: HashtagGroup[] = [
-  {
-    id: 'hg1',
-    name: 'Social Media Marketing',
-    hashtags: ['#socialmediamarketing', '#digitalmarketing', '#contentmarketing', '#marketingtips', '#socialmediatips'],
-    platform: 'instagram',
-  },
-  {
-    id: 'hg2',
-    name: 'Tech & AI',
-    hashtags: ['#artificialintelligence', '#machinelearning', '#techstartup', '#innovation', '#futuretech'],
-    platform: 'twitter',
-  },
-  {
-    id: 'hg3',
-    name: 'Business Growth',
-    hashtags: ['#businessgrowth', '#entrepreneurship', '#startuplife', '#leadership', '#businessstrategy'],
-    platform: 'linkedin',
-  },
-];
+function callAI(body: Record<string, unknown>): Promise<AIApiResponse> {
+  return fetch('/api/ai', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  }).then((res) => res.json());
+}
 
-// ─── Velocity Helpers ───────────────────────────────────────────────────────
+function parseTrendGrowth(trendStr: string): number {
+  const match = trendStr.match(/(\d+)/);
+  return match ? parseInt(match[1], 10) : 0;
+}
+
+function formatRelativeTime(isoString: string): string {
+  const now = Date.now();
+  const then = new Date(isoString).getTime();
+  const diffMs = now - then;
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return 'Just now';
+  if (diffMin < 60) return `${diffMin} min ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr} hour${diffHr > 1 ? 's' : ''} ago`;
+  const diffDay = Math.floor(diffHr / 24);
+  return `${diffDay} day${diffDay > 1 ? 's' : ''} ago`;
+}
 
 function getVelocityColor(velocity: 'high' | 'medium' | 'low') {
   switch (velocity) {
@@ -225,11 +137,18 @@ function getVelocityColor(velocity: 'high' | 'medium' | 'low') {
 function getCategoryColor(category: string) {
   const colors: Record<string, string> = {
     Technology: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400',
+    'Content Type': 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400',
     Lifestyle: 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400',
     Business: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+    Strategy: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
     Entertainment: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
     Food: 'bg-lime-100 text-lime-700 dark:bg-lime-900/30 dark:text-lime-400',
     Wellness: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400',
+    Marketing: 'bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-900/30 dark:text-fuchsia-400',
+    Values: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400',
+    Engagement: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+    'E-Commerce': 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+    'HR/Marketing': 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
   };
   return colors[category] || 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300';
 }
@@ -241,14 +160,16 @@ function getHashtagScoreColor(score: number) {
   return 'bg-zinc-400 text-white';
 }
 
-function getPlatformIcon(platform: PlatformKey) {
+function getPlatformIcon(platform: string) {
+  const p = platform as PlatformKey;
+  const platformData = PLATFORMS[p];
   return (
     <Avatar className="h-6 w-6">
       <AvatarFallback
         className="text-[10px] font-bold text-white"
-        style={{ backgroundColor: PLATFORMS[platform].color }}
+        style={{ backgroundColor: platformData?.color || '#666' }}
       >
-        {PLATFORMS[platform].name.charAt(0)}
+        {platformData?.name?.charAt(0) || '?'}
       </AvatarFallback>
     </Avatar>
   );
@@ -280,114 +201,173 @@ export function AIToolsPage() {
   const [hashtagPlatform, setHashtagPlatform] = useState<PlatformKey>('instagram');
   const [hashtagCount, setHashtagCount] = useState(15);
   const [generatedHashtags, setGeneratedHashtags] = useState<HashtagResult[]>([]);
+  const [trendingHashtags, setTrendingHashtags] = useState<string[]>([]);
+  const [hashtagPerformanceScore, setHashtagPerformanceScore] = useState<number | null>(null);
   const [addedHashtags, setAddedHashtags] = useState<string[]>([]);
 
   // ── Auto-Reply State ──
-  const [comments, setComments] = useState<CommentItem[]>(MOCK_COMMENTS);
+  const [comments, setComments] = useState<CommentItem[]>([]);
+  const [isLoadingComments, setIsLoadingComments] = useState(false);
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [editingReply, setEditingReply] = useState<{ commentId: string; text: string } | null>(null);
   const [sentReplies, setSentReplies] = useState<{ commentId: string; reply: string; sentAt: string }[]>([]);
 
   // ── Trend Detector State ──
-  const [trends, setTrends] = useState<TrendItem[]>(MOCK_TRENDS);
+  const [trends, setTrends] = useState<TrendItem[]>([]);
+  const [isLoadingTrends, setIsLoadingTrends] = useState(false);
 
-  // ── Helper: simulate AI generation delay ──
-  const simulateGeneration = async (ms: number = 1800): Promise<void> => {
-    setIsGenerating(true);
-    return new Promise((resolve) => setTimeout(resolve, ms));
+  // ── Copy state ──
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // ── Fetch comments on mount ──
+  useEffect(() => {
+    fetchComments();
+  }, []);
+
+  // ── Fetch trends on mount ──
+  useEffect(() => {
+    fetchTrends();
+  }, []);
+
+  // ── Fetch Comments ──
+  const fetchComments = async () => {
+    setIsLoadingComments(true);
+    try {
+      const res = await fetch('/api/comments');
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        setComments(
+          json.data.map((c: Record<string, unknown>) => ({
+            id: c.id as string,
+            platform: (c.platform as string) || 'instagram',
+            content: c.content as string,
+            authorName: c.authorName as string,
+            authorAvatar: (c.authorAvatar as string) || '',
+            createdAt: formatRelativeTime(c.createdAt as string),
+            isReplied: c.isReplied as boolean,
+            aiReply: (c.aiReply as string) || undefined,
+          }))
+        );
+      }
+    } catch {
+      toast.error('Failed to load comments');
+    } finally {
+      setIsLoadingComments(false);
+    }
   };
 
-  // ── Content Generator Handlers ──
+  // ── Fetch Trends ──
+  const fetchTrends = async () => {
+    setIsLoadingTrends(true);
+    try {
+      const result = await callAI({ type: 'trends' });
+      if (result.success && result.data) {
+        const trendData: TrendApiResponse[] = JSON.parse(result.data);
+        const mapped: TrendItem[] = trendData.map((t, i) => ({
+          id: `trend-${i}-${Date.now()}`,
+          name: t.topic,
+          growth: parseTrendGrowth(t.trend),
+          category: t.category,
+          velocity: (t.velocity as 'high' | 'medium' | 'low') || 'medium',
+          postsCount: Math.floor(Math.random() * 200000 + 20000),
+          description: `Trending ${t.topic.toLowerCase()} content gaining traction across social platforms.`,
+        }));
+        setTrends(mapped);
+      }
+    } catch {
+      toast.error('Failed to load trends');
+    } finally {
+      setIsLoadingTrends(false);
+    }
+  };
+
+  // ── Content Generator Handler ──
   const handleGenerate = async () => {
     if (!topic.trim()) return;
-    await simulateGeneration();
-
-    const captions: Record<string, string> = {
-      professional: `In today's fast-paced digital landscape, ${topic} is more important than ever. Here's why you should pay attention:\n\n1. It drives engagement and builds brand loyalty\n2. It positions you as a thought leader in your industry\n3. It creates authentic connections with your audience\n\nThe key is consistency and authenticity. Start today and watch your community grow.\n\n#${topic.replace(/\s+/g, '')} #SocialMedia #DigitalStrategy`,
-      casual: `So I've been diving deep into ${topic} lately and honestly? It's a game changer! 🔥\n\nIf you're not leveraging this yet, you're leaving serious engagement on the table.\n\nHere's my take: start small, stay consistent, and don't overthink it. The algorithm loves authenticity!\n\nWho else is on this journey? Drop a comment below 👇`,
-      inspiring: `Imagine a world where ${topic} transforms the way you connect with your audience.\n\nThis isn't just a trend — it's a movement. Every piece of content you create is an opportunity to inspire, educate, and empower.\n\nYour voice matters. Your story matters. Share it boldly.\n\n✨ The future belongs to those who create, not consume.`,
-      funny: `POV: You just discovered ${topic} and now you're about to go viral 😂\n\nStep 1: Learn about it (you're here, great start!)\nStep 2: Create content about it\nStep 3: Watch your notifications explode\nStep 4: Question why you didn't do this sooner\n\nPlot twist: Step 4 hits different at 3 AM while scrolling your analytics 📈\n\n#${topic.replace(/\s+/g, '')} #Relatable`,
-    };
-
-    const lengthMultipliers: Record<string, string> = {
-      short: captions[tone].split('\n').slice(0, 3).join('\n'),
-      medium: captions[tone],
-      long: captions[tone] + `\n\n💡 Pro tip: Combine this with a consistent posting schedule and engaging visuals for maximum impact.\n\nRemember: quality over quantity, but don't be afraid to experiment. The best content strategies evolve over time.\n\n📌 Save this for later and share with someone who needs to see it!`,
-    };
-
-    const text = lengthMultipliers[contentLength];
-    setGeneratedContent({ text, charCount: text.length });
-    setIsGenerating(false);
+    setIsGenerating(true);
+    try {
+      const platform = genPlatforms.length > 0 ? genPlatforms[0] : '';
+      const result = await callAI({
+        type: 'generate_caption',
+        topic,
+        platform,
+        tone,
+        length: contentLength,
+      });
+      if (result.success && result.data) {
+        setGeneratedContent({ text: result.data, charCount: result.data.length });
+      } else {
+        toast.error(result.error || 'Failed to generate content');
+      }
+    } catch {
+      toast.error('AI request failed. Please try again.');
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handleRegenerate = async () => {
     await handleGenerate();
   };
 
-  const handleCopyContent = async (text: string) => {
-    await navigator.clipboard.writeText(text);
-  };
-
-  // ── Platform Rewriter Handlers ──
+  // ── Platform Rewriter Handler ──
   const handleRewrite = async () => {
     if (!rewriteSource.trim()) return;
     setIsRewriting(true);
-    await simulateGeneration(2000);
-
-    const platformAdaptations: Record<string, string> = {
-      twitter: `${rewriteSource.substring(0, 200)}\n\n🔥 | #trending #viral`,
-      instagram: `${rewriteSource}\n\n✨ Double tap if you agree!\n\n---\n📌 Save for later\n💬 Comment your thoughts below\n🔗 Link in bio\n\n#contentcreator #socialmediamarketing #digitalmarketing #instagood #viral #trending`,
-      linkedin: `${rewriteSource}\n\nWhat are your thoughts on this? I'd love to hear your perspective in the comments.\n\nFollow me for more insights on marketing and growth strategy.\n\n#Marketing #DigitalStrategy #Growth #LinkedIn`,
-      facebook: `${rewriteSource}\n\nWhat do you think? Drop your thoughts in the comments! 👇\n\n👍 Like | 💬 Comment | 🔄 Share`,
-      tiktok: `${rewriteSource.substring(0, 150)}\n\n#fyp #foryou #viral #trending`,
-      youtube: `${rewriteSource}\n\nDon't forget to LIKE and SUBSCRIBE! 🔔\n\n#YouTube #ContentCreator #Subscribe`,
-    };
-
-    setRewrittenContent(platformAdaptations[rewritePlatform] || rewriteSource);
-    setIsRewriting(false);
+    try {
+      const result = await callAI({
+        type: 'rewrite',
+        content: rewriteSource,
+        platform: rewritePlatform,
+        tone: rewriteTone,
+      });
+      if (result.success && result.data) {
+        setRewrittenContent(result.data);
+      } else {
+        toast.error(result.error || 'Failed to rewrite content');
+      }
+    } catch {
+      toast.error('AI request failed. Please try again.');
+    } finally {
+      setIsRewriting(false);
+    }
   };
 
-  // ── Hashtag Generator Handlers ──
+  // ── Hashtag Generator Handler ──
   const handleGenerateHashtags = async () => {
     if (!hashtagTopic.trim()) return;
-    await simulateGeneration(1500);
+    setIsGenerating(true);
+    try {
+      const result = await callAI({
+        type: 'hashtags',
+        topic: hashtagTopic,
+        platform: hashtagPlatform,
+      });
+      if (result.success && result.data) {
+        const parsed: HashtagsApiResponse = JSON.parse(result.data);
+        const baseScore = parsed.performance_score || 75;
 
-    const topicNormalized = hashtagTopic.toLowerCase().replace(/[^a-z0-9]/g, '');
-    const allHashtags: HashtagResult[] = [
-      { tag: `#${topicNormalized}`, score: 95, posts: 2450000, category: 'Core' },
-      { tag: `#${topicNormalized}tips`, score: 88, posts: 890000, category: 'Niche' },
-      { tag: `#${topicNormalized}marketing`, score: 82, posts: 1230000, category: 'Marketing' },
-      { tag: `#social${topicNormalized}`, score: 79, posts: 567000, category: 'Social' },
-      { tag: `#${topicNormalized}strategy`, score: 76, posts: 432000, category: 'Strategy' },
-      { tag: `#${topicNormalized}growth`, score: 74, posts: 389000, category: 'Growth' },
-      { tag: `#${topicNormalized}life`, score: 71, posts: 1200000, category: 'Lifestyle' },
-      { tag: `#${topicNormalized}hacks`, score: 68, posts: 678000, category: 'Tips' },
-      { tag: `#${topicNormalized}community`, score: 65, posts: 345000, category: 'Community' },
-      { tag: `#${topicNormalized}viral`, score: 63, posts: 890000, category: 'Viral' },
-      { tag: `#${topicNormalized}trending`, score: 61, posts: 1500000, category: 'Trending' },
-      { tag: `#${topicNormalized}content`, score: 58, posts: 723000, category: 'Content' },
-      { tag: `#${topicNormalized}creator`, score: 55, posts: 456000, category: 'Creator' },
-      { tag: `#${topicNormalized}inspo`, score: 52, posts: 890000, category: 'Inspiration' },
-      { tag: `#${topicNormalized}goals`, score: 50, posts: 1100000, category: 'Goals' },
-      { tag: `#${topicNormalized}daily`, score: 48, posts: 2340000, category: 'Daily' },
-      { tag: `#${topicNormalized}love`, score: 46, posts: 3400000, category: 'Engagement' },
-      { tag: `#${topicNormalized}business`, score: 44, posts: 1780000, category: 'Business' },
-      { tag: `#${topicNormalized}success`, score: 42, posts: 1560000, category: 'Success' },
-      { tag: `#${topicNormalized}motivation`, score: 40, posts: 2800000, category: 'Motivation' },
-      { tag: `#${topicNormalized}digital`, score: 38, posts: 567000, category: 'Digital' },
-      { tag: `#${topicNormalized}online`, score: 36, posts: 980000, category: 'Online' },
-      { tag: `#${topicNormalized}brand`, score: 34, posts: 456000, category: 'Brand' },
-      { tag: `#${topicNormalized}tips2025`, score: 32, posts: 234000, category: 'Timely' },
-      { tag: `#${topicNormalized}forbeginners`, score: 30, posts: 567000, category: 'Beginner' },
-      { tag: `#${topicNormalized}expert`, score: 28, posts: 123000, category: 'Expert' },
-      { tag: `#${topicNormalized}tools`, score: 26, posts: 345000, category: 'Tools' },
-      { tag: `#${topicNormalized}review`, score: 24, posts: 178000, category: 'Review' },
-      { tag: `#${topicNormalized}tutorial`, score: 22, posts: 289000, category: 'Tutorial' },
-      { tag: `#${topicNormalized}guide`, score: 20, posts: 412000, category: 'Guide' },
-    ];
+        // Map API hashtags to HashtagResult with derived scores
+        const categories = ['Core', 'Niche', 'Marketing', 'Social', 'Strategy', 'Growth', 'Viral', 'Trending', 'Content', 'Creator', 'Engagement', 'Lifestyle', 'Community', 'Inspiration', 'Tips'];
+        const results: HashtagResult[] = parsed.hashtags.map((tag, i) => ({
+          tag,
+          score: Math.max(20, Math.round(baseScore - (i * (baseScore - 30) / Math.max(1, parsed.hashtags.length - 1)) + (Math.random() * 6 - 3))),
+          posts: Math.floor(Math.random() * 3000000 + 100000),
+          category: categories[i % categories.length],
+        }));
 
-    setGeneratedHashtags(allHashtags.slice(0, hashtagCount));
-    setIsGenerating(false);
+        const count = Math.min(hashtagCount, results.length);
+        setGeneratedHashtags(results.slice(0, count));
+        setTrendingHashtags(parsed.trending || []);
+        setHashtagPerformanceScore(parsed.performance_score);
+      } else {
+        toast.error(result.error || 'Failed to generate hashtags');
+      }
+    } catch {
+      toast.error('AI request failed. Please try again.');
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handleAddHashtag = (tag: string) => {
@@ -410,28 +390,42 @@ export function AIToolsPage() {
   // ── Auto-Reply Handlers ──
   const handleGenerateReply = async (commentId: string) => {
     setReplyingTo(commentId);
-    await simulateGeneration(2000);
+    try {
+      const comment = comments.find((c) => c.id === commentId);
+      if (!comment) return;
 
-    const comment = comments.find((c) => c.id === commentId);
-    const replies: Record<string, string> = {
-      c1: "Thank you so much! 😊 We're thrilled that our scheduling tips are helpful. Stay tuned for more content optimization strategies!",
-      c2: "Great question! We're planning a deep dive into hashtag strategy very soon. In the meantime, focus on a mix of broad and niche hashtags — around 20-25 for Instagram works great. Follow us to catch the full guide when it drops! 📈",
-      c3: "Thank you for sharing with your team, Jennifer! That means a lot. Analytics best practices is definitely on our content calendar. Would love to hear what specific metrics your team focuses on most!",
-      c4: "Thanks for sharing your perspective! You make a fair point — quality definitely matters more than quantity. We believe in finding the right balance for each platform and audience. What posting frequency has worked best for you?",
-      c5: "So happy to hear that! 💕 We love seeing our recipes come to life. Tag us in your next creation — we'd love to feature it! 🙌",
-    };
-
-    setComments((prev) =>
-      prev.map((c) =>
-        c.id === commentId ? { ...c, aiReply: replies[commentId] || 'Thanks for your comment!' } : c
-      )
-    );
-    setReplyingTo(null);
+      const result = await callAI({
+        type: 'auto_reply',
+        content: comment.content,
+      });
+      if (result.success && result.data) {
+        setComments((prev) =>
+          prev.map((c) =>
+            c.id === commentId ? { ...c, aiReply: result.data } : c
+          )
+        );
+      } else {
+        toast.error(result.error || 'Failed to generate reply');
+      }
+    } catch {
+      toast.error('AI request failed. Please try again.');
+    } finally {
+      setReplyingTo(null);
+    }
   };
 
   const handleApproveReply = (commentId: string) => {
     const comment = comments.find((c) => c.id === commentId);
     if (!comment?.aiReply) return;
+
+    // Persist reply via API
+    fetch('/api/comments', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: commentId, reply: comment.aiReply }),
+    }).catch(() => {
+      // Silent fail for persistence, still update UI
+    });
 
     setSentReplies((prev) => [
       { commentId, reply: comment.aiReply!, sentAt: 'Just now' },
@@ -440,6 +434,7 @@ export function AIToolsPage() {
     setComments((prev) =>
       prev.map((c) => (c.id === commentId ? { ...c, isReplied: true } : c))
     );
+    toast.success('Reply sent successfully!');
   };
 
   const handleEditReply = (commentId: string) => {
@@ -457,15 +452,19 @@ export function AIToolsPage() {
       )
     );
     setEditingReply(null);
+    toast.success('Reply updated');
   };
 
-  // ── Copy state ──
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-
+  // ── Copy Helpers ──
   const handleCopyWithFeedback = async (text: string, id: string) => {
-    await handleCopyContent(text);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+      toast.success('Copied to clipboard!');
+    } catch {
+      toast.error('Failed to copy');
+    }
   };
 
   return (
@@ -668,7 +667,17 @@ export function AIToolsPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {generatedContent ? (
+                {isGenerating && !generatedContent ? (
+                  <div className="flex min-h-[350px] flex-col items-center justify-center gap-4 text-center text-muted-foreground">
+                    <Loader2 className="h-8 w-8 animate-spin text-violet-500" />
+                    <div className="space-y-1">
+                      <p className="font-medium text-foreground">Generating with AI...</p>
+                      <p className="text-sm">
+                        Crafting the perfect content for your topic
+                      </p>
+                    </div>
+                  </div>
+                ) : generatedContent ? (
                   <>
                     {/* Content Display with Glow */}
                     <div className="relative rounded-lg border border-violet-200 bg-gradient-to-br from-violet-50/50 to-fuchsia-50/50 p-4 dark:border-violet-800 dark:from-violet-950/20 dark:to-fuchsia-950/20">
@@ -850,6 +859,12 @@ export function AIToolsPage() {
           </Card>
 
           {/* Side-by-side Comparison */}
+          {isRewriting && !rewrittenContent && (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin text-fuchsia-500" />
+              <span className="ml-3 text-sm text-muted-foreground">AI is rewriting your content...</span>
+            </div>
+          )}
           {rewrittenContent && (
             <div className="grid gap-4 md:grid-cols-2">
               {/* Original */}
@@ -1033,47 +1048,50 @@ export function AIToolsPage() {
                 </Button>
               </CardContent>
 
-              {/* Hashtag Groups */}
-              <Separator />
-              <CardContent className="space-y-3">
-                <Label className="flex items-center gap-2">
-                  <Zap className="h-4 w-4 text-amber-500" />
-                  Saved Hashtag Groups
-                </Label>
-                <ScrollArea className="max-h-48">
-                  <div className="space-y-2">
-                    {MOCK_HASHTAG_GROUPS.map((group) => (
-                      <div
-                        key={group.id}
-                        className="rounded-lg border p-3 space-y-2"
-                      >
+              {/* Trending Hashtags */}
+              {trendingHashtags.length > 0 && (
+                <>
+                  <Separator />
+                  <CardContent className="space-y-3">
+                    <Label className="flex items-center gap-2">
+                      <Flame className="h-4 w-4 text-orange-500" />
+                      Currently Trending
+                    </Label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {trendingHashtags.map((tag) => (
+                        <Badge
+                          key={tag}
+                          variant="secondary"
+                          className="cursor-pointer gap-1 hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors"
+                          onClick={() => {
+                            handleAddHashtag(tag);
+                            toast.success(`Added ${tag}`);
+                          }}
+                        >
+                          <Flame className="h-3 w-3 text-orange-500" />
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                    {hashtagPerformanceScore !== null && (
+                      <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 p-3">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium">{group.name}</span>
-                          <Badge variant="secondary" className="text-[10px]">
-                            {PLATFORMS[group.platform].name}
-                          </Badge>
+                          <span className="text-xs text-muted-foreground">Performance Score</span>
+                          <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                            {hashtagPerformanceScore}/100
+                          </span>
                         </div>
-                        <div className="flex flex-wrap gap-1">
-                          {group.hashtags.slice(0, 3).map((tag) => (
-                            <span key={tag} className="text-xs text-muted-foreground">
-                              {tag}
-                            </span>
-                          ))}
-                          {group.hashtags.length > 3 && (
-                            <span className="text-xs text-muted-foreground">
-                              +{group.hashtags.length - 3} more
-                            </span>
-                          )}
+                        <div className="mt-1.5 h-2 w-full rounded-full bg-emerald-100 dark:bg-emerald-900/50 overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                            style={{ width: `${hashtagPerformanceScore}%` }}
+                          />
                         </div>
-                        <Button variant="ghost" size="sm" className="h-7 text-xs w-full">
-                          <Plus className="mr-1 h-3 w-3" />
-                          Use This Group
-                        </Button>
                       </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </CardContent>
+                    )}
+                  </CardContent>
+                </>
+              )}
             </Card>
 
             {/* Generated Hashtags */}
@@ -1102,7 +1120,17 @@ export function AIToolsPage() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                {generatedHashtags.length > 0 ? (
+                {isGenerating && generatedHashtags.length === 0 ? (
+                  <div className="flex min-h-[300px] flex-col items-center justify-center gap-4 text-center text-muted-foreground">
+                    <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+                    <div className="space-y-1">
+                      <p className="font-medium text-foreground">Generating hashtags...</p>
+                      <p className="text-sm">
+                        AI is finding the best hashtags for your topic
+                      </p>
+                    </div>
+                  </div>
+                ) : generatedHashtags.length > 0 ? (
                   <>
                     <ScrollArea className="max-h-[320px]">
                       <div className="grid gap-2 sm:grid-cols-2">
@@ -1221,144 +1249,174 @@ export function AIToolsPage() {
             {/* Comments List */}
             <Card className="lg:col-span-3">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MessageCircle className="h-5 w-5 text-blue-500" />
-                  Recent Comments
-                </CardTitle>
-                <CardDescription>
-                  AI-generated replies for recent comments across your connected platforms.
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <MessageCircle className="h-5 w-5 text-blue-500" />
+                      Recent Comments
+                    </CardTitle>
+                    <CardDescription className="mt-1">
+                      AI-generated replies for recent comments across your connected platforms.
+                    </CardDescription>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={fetchComments}
+                    disabled={isLoadingComments}
+                  >
+                    <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${isLoadingComments ? 'animate-spin' : ''}`} />
+                    Refresh
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
-                <ScrollArea className="max-h-[600px]">
-                  <div className="space-y-4">
-                    {comments.map((comment) => (
-                      <div
-                        key={comment.id}
-                        className={`rounded-lg border p-4 transition-all ${
-                          comment.isReplied
-                            ? 'border-emerald-200 bg-emerald-50/50 dark:border-emerald-800 dark:bg-emerald-950/20'
-                            : 'hover:bg-accent/50'
-                        }`}
-                      >
-                        {/* Comment Header */}
-                        <div className="flex items-start gap-3">
-                          <Avatar className="h-9 w-9 shrink-0">
-                            <AvatarFallback className="text-xs font-bold text-white"
-                              style={{ backgroundColor: PLATFORMS[comment.platform]?.color || '#666' }}
-                            >
-                              {comment.authorName.charAt(0).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-sm font-medium">{comment.authorName}</span>
-                              {getPlatformIcon(comment.platform)}
-                              <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                {comment.createdAt}
-                              </span>
-                              {comment.isReplied && (
-                                <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 text-[10px]">
-                                  <Check className="mr-0.5 h-2.5 w-2.5" />
-                                  Replied
-                                </Badge>
-                              )}
-                            </div>
-                            <p className="mt-1 text-sm text-muted-foreground">{comment.content}</p>
-                          </div>
-                        </div>
-
-                        {/* AI Reply Section */}
-                        {comment.aiReply && (
-                          <div className="mt-3 ml-12 rounded-lg border border-blue-200 bg-gradient-to-r from-blue-50/50 to-violet-50/50 p-3 dark:border-blue-800 dark:from-blue-950/20 dark:to-violet-950/20">
-                            {editingReply?.commentId === comment.id ? (
-                              <div className="space-y-2">
-                                <Textarea
-                                  value={editingReply.text}
-                                  onChange={(e) =>
-                                    setEditingReply({ ...editingReply, text: e.target.value })
-                                  }
-                                  className="min-h-[80px] resize-none text-sm"
-                                />
-                                <div className="flex gap-2">
-                                  <Button
-                                    size="sm"
-                                    onClick={() => handleSaveEditedReply(comment.id)}
-                                  >
-                                    <Check className="mr-1 h-3 w-3" />
-                                    Save
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => setEditingReply(null)}
-                                  >
-                                    Cancel
-                                  </Button>
-                                </div>
+                {isLoadingComments ? (
+                  <div className="flex min-h-[400px] items-center justify-center">
+                    <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+                    <span className="ml-3 text-sm text-muted-foreground">Loading comments...</span>
+                  </div>
+                ) : comments.length === 0 ? (
+                  <div className="flex min-h-[400px] flex-col items-center justify-center gap-3 text-center text-muted-foreground">
+                    <MessageCircle className="h-8 w-8 text-muted-foreground/30" />
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-foreground">No comments found</p>
+                      <p className="text-xs">
+                        Comments from your connected accounts will appear here
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <ScrollArea className="max-h-[600px]">
+                    <div className="space-y-4">
+                      {comments.map((comment) => (
+                        <div
+                          key={comment.id}
+                          className={`rounded-lg border p-4 transition-all ${
+                            comment.isReplied
+                              ? 'border-emerald-200 bg-emerald-50/50 dark:border-emerald-800 dark:bg-emerald-950/20'
+                              : 'hover:bg-accent/50'
+                          }`}
+                        >
+                          {/* Comment Header */}
+                          <div className="flex items-start gap-3">
+                            <Avatar className="h-9 w-9 shrink-0">
+                              <AvatarFallback className="text-xs font-bold text-white"
+                                style={{ backgroundColor: PLATFORMS[comment.platform as PlatformKey]?.color || '#666' }}
+                              >
+                                {comment.authorName.charAt(0).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-sm font-medium">{comment.authorName}</span>
+                                {getPlatformIcon(comment.platform)}
+                                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  {comment.createdAt}
+                                </span>
+                                {comment.isReplied && (
+                                  <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 text-[10px]">
+                                    <Check className="mr-0.5 h-2.5 w-2.5" />
+                                    Replied
+                                  </Badge>
+                                )}
                               </div>
-                            ) : (
-                              <>
-                                <div className="flex items-center gap-1.5 mb-1.5">
-                                  <Sparkles className="h-3 w-3 text-violet-500" />
-                                  <span className="text-[10px] font-medium text-violet-600 dark:text-violet-400">
-                                    AI Generated Reply
-                                  </span>
-                                </div>
-                                <p className="text-sm">{comment.aiReply}</p>
-                                {!comment.isReplied && (
-                                  <div className="mt-2 flex gap-2">
+                              <p className="mt-1 text-sm text-muted-foreground">{comment.content}</p>
+                            </div>
+                          </div>
+
+                          {/* AI Reply Section */}
+                          {comment.aiReply && (
+                            <div className="mt-3 ml-12 rounded-lg border border-blue-200 bg-gradient-to-r from-blue-50/50 to-violet-50/50 p-3 dark:border-blue-800 dark:from-blue-950/20 dark:to-violet-950/20">
+                              {editingReply?.commentId === comment.id ? (
+                                <div className="space-y-2">
+                                  <Textarea
+                                    value={editingReply.text}
+                                    onChange={(e) =>
+                                      setEditingReply({ ...editingReply, text: e.target.value })
+                                    }
+                                    className="min-h-[80px] resize-none text-sm"
+                                  />
+                                  <div className="flex gap-2">
                                     <Button
                                       size="sm"
-                                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                                      onClick={() => handleApproveReply(comment.id)}
+                                      onClick={() => handleSaveEditedReply(comment.id)}
                                     >
-                                      <Send className="mr-1 h-3 w-3" />
-                                      Approve &amp; Send
+                                      <Check className="mr-1 h-3 w-3" />
+                                      Save
                                     </Button>
                                     <Button
                                       size="sm"
-                                      variant="outline"
-                                      onClick={() => handleEditReply(comment.id)}
+                                      variant="ghost"
+                                      onClick={() => setEditingReply(null)}
                                     >
-                                      Edit
+                                      Cancel
                                     </Button>
                                   </div>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Generate Reply Button */}
-                        {!comment.aiReply && !comment.isReplied && (
-                          <div className="mt-3 ml-12">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              disabled={replyingTo === comment.id}
-                              onClick={() => handleGenerateReply(comment.id)}
-                              className="gap-1.5"
-                            >
-                              {replyingTo === comment.id ? (
-                                <>
-                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                  Generating...
-                                </>
+                                </div>
                               ) : (
                                 <>
-                                  <Sparkles className="h-3.5 w-3.5 text-violet-500" />
-                                  Generate Reply
+                                  <div className="flex items-center gap-1.5 mb-1.5">
+                                    <Sparkles className="h-3 w-3 text-violet-500" />
+                                    <span className="text-[10px] font-medium text-violet-600 dark:text-violet-400">
+                                      AI Generated Reply
+                                    </span>
+                                  </div>
+                                  <p className="text-sm">{comment.aiReply}</p>
+                                  {!comment.isReplied && (
+                                    <div className="mt-2 flex gap-2">
+                                      <Button
+                                        size="sm"
+                                        className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                                        onClick={() => handleApproveReply(comment.id)}
+                                      >
+                                        <Send className="mr-1 h-3 w-3" />
+                                        Approve &amp; Send
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleEditReply(comment.id)}
+                                      >
+                                        Edit
+                                      </Button>
+                                    </div>
+                                  )}
                                 </>
                               )}
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
+                            </div>
+                          )}
+
+                          {/* Generate Reply Button */}
+                          {!comment.aiReply && !comment.isReplied && (
+                            <div className="mt-3 ml-12">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={replyingTo === comment.id}
+                                onClick={() => handleGenerateReply(comment.id)}
+                                className="gap-1.5"
+                              >
+                                {replyingTo === comment.id ? (
+                                  <>
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    Generating...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Sparkles className="h-3.5 w-3.5 text-violet-500" />
+                                    Generate Reply
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                )}
               </CardContent>
             </Card>
 
@@ -1434,17 +1492,10 @@ export function AIToolsPage() {
                   variant="outline"
                   size="sm"
                   className="gap-1.5"
-                  onClick={async () => {
-                    setIsGenerating(true);
-                    await simulateGeneration(1200);
-                    setTrends(
-                      [...MOCK_TRENDS].sort(() => Math.random() - 0.5)
-                    );
-                    setIsGenerating(false);
-                  }}
-                  disabled={isGenerating}
+                  onClick={fetchTrends}
+                  disabled={isLoadingTrends}
                 >
-                  {isGenerating ? (
+                  {isLoadingTrends ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   ) : (
                     <RefreshCw className="h-3.5 w-3.5" />
@@ -1454,95 +1505,114 @@ export function AIToolsPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-4 md:grid-cols-2">
-                {trends.map((trend) => {
-                  const velocityInfo = getVelocityColor(trend.velocity);
-                  const catColor = getCategoryColor(trend.category);
+              {isLoadingTrends && trends.length === 0 ? (
+                <div className="flex min-h-[400px] items-center justify-center">
+                  <Loader2 className="h-6 w-6 animate-spin text-orange-500" />
+                  <span className="ml-3 text-sm text-muted-foreground">Fetching trends...</span>
+                </div>
+              ) : trends.length === 0 ? (
+                <div className="flex min-h-[400px] flex-col items-center justify-center gap-4 text-center text-muted-foreground">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
+                    <TrendingUp className="h-8 w-8 text-muted-foreground/50" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="font-medium text-foreground">No trends loaded</p>
+                    <p className="text-sm">
+                      Click &quot;Refresh Trends&quot; to discover what&apos;s trending
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {trends.map((trend) => {
+                    const velocityInfo = getVelocityColor(trend.velocity);
+                    const catColor = getCategoryColor(trend.category);
 
-                  return (
-                    <div
-                      key={trend.id}
-                      className="group relative overflow-hidden rounded-xl border p-5 transition-all hover:shadow-lg hover:border-primary/20"
-                    >
-                      {/* Gradient Accent Top Border */}
-                      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500" />
+                    return (
+                      <div
+                        key={trend.id}
+                        className="group relative overflow-hidden rounded-xl border p-5 transition-all hover:shadow-lg hover:border-primary/20"
+                      >
+                        {/* Gradient Accent Top Border */}
+                        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500" />
 
-                      <div className="space-y-4">
-                        {/* Header */}
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0 space-y-1.5">
-                            <h3 className="font-semibold text-base leading-tight">
-                              {trend.name}
-                            </h3>
-                            <p className="text-sm text-muted-foreground line-clamp-2">
-                              {trend.description}
-                            </p>
-                          </div>
-                          <div className="flex flex-col items-end gap-1.5 shrink-0">
-                            <Badge
-                              variant="secondary"
-                              className={`text-xs ${catColor}`}
-                            >
-                              {trend.category}
-                            </Badge>
-                            <span className="text-xs text-muted-foreground">
-                              {(trend.postsCount / 1000).toFixed(0)}K posts
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Growth & Velocity */}
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-muted-foreground">Growth</span>
-                            <span className="flex items-center gap-1 text-sm font-bold text-emerald-600 dark:text-emerald-400">
-                              <Flame className="h-3.5 w-3.5" />
-                              +{trend.growth}%
-                            </span>
-                          </div>
-
-                          {/* Velocity Bar */}
-                          <div className="space-y-1">
-                            <div className="flex items-center justify-between">
-                              <span className="text-[11px] text-muted-foreground">
-                                Velocity
-                              </span>
+                        <div className="space-y-4">
+                          {/* Header */}
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 space-y-1.5">
+                              <h3 className="font-semibold text-base leading-tight">
+                                {trend.name}
+                              </h3>
+                              <p className="text-sm text-muted-foreground line-clamp-2">
+                                {trend.description}
+                              </p>
+                            </div>
+                            <div className="flex flex-col items-end gap-1.5 shrink-0">
                               <Badge
-                                variant="outline"
-                                className={`text-[10px] ${velocityInfo.badge}`}
+                                variant="secondary"
+                                className={`text-xs ${catColor}`}
                               >
-                                {trend.velocity.charAt(0).toUpperCase() + trend.velocity.slice(1)}
+                                {trend.category}
                               </Badge>
-                            </div>
-                            <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-                              <div
-                                className={`h-full rounded-full transition-all duration-700 ${velocityInfo.bg}`}
-                                style={{ width: velocityInfo.width }}
-                              />
+                              <span className="text-xs text-muted-foreground">
+                                {(trend.postsCount / 1000).toFixed(0)}K posts
+                              </span>
                             </div>
                           </div>
+
+                          {/* Growth & Velocity */}
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-muted-foreground">Growth</span>
+                              <span className="flex items-center gap-1 text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                                <Flame className="h-3.5 w-3.5" />
+                                +{trend.growth}%
+                              </span>
+                            </div>
+
+                            {/* Velocity Bar */}
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[11px] text-muted-foreground">
+                                  Velocity
+                                </span>
+                                <Badge
+                                  variant="outline"
+                                  className={`text-[10px] ${velocityInfo.badge}`}
+                                >
+                                  {trend.velocity.charAt(0).toUpperCase() + trend.velocity.slice(1)}
+                                </Badge>
+                              </div>
+                              <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full transition-all duration-700 ${velocityInfo.bg}`}
+                                  style={{ width: velocityInfo.width }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          <Separator />
+
+                          {/* Action */}
+                          <Button
+                            variant="outline"
+                            className="w-full group-hover:bg-gradient-to-r group-hover:from-orange-50 group-hover:to-pink-50 group-hover:border-orange-200 dark:group-hover:from-orange-950/30 dark:group-hover:to-pink-950/30 dark:group-hover:border-orange-800"
+                            onClick={() => {
+                              setActiveTab('generator');
+                              setTopic(trend.name);
+                            }}
+                          >
+                            <Sparkles className="mr-2 h-4 w-4 text-violet-500" />
+                            Create Content for This Trend
+                            <ArrowRight className="ml-1 h-3.5 w-3.5 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
+                          </Button>
                         </div>
-
-                        <Separator />
-
-                        {/* Action */}
-                        <Button
-                          variant="outline"
-                          className="w-full group-hover:bg-gradient-to-r group-hover:from-orange-50 group-hover:to-pink-50 group-hover:border-orange-200 dark:group-hover:from-orange-950/30 dark:group-hover:to-pink-950/30 dark:group-hover:border-orange-800"
-                          onClick={() => {
-                            setActiveTab('generator');
-                            setTopic(trend.name);
-                          }}
-                        >
-                          <Sparkles className="mr-2 h-4 w-4 text-violet-500" />
-                          Create Content for This Trend
-                          <ArrowRight className="ml-1 h-3.5 w-3.5 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
-                        </Button>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

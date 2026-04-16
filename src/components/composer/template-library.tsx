@@ -46,7 +46,6 @@ interface Template {
 
 interface TemplateLibraryProps {
   onApplyTemplate: (content: string) => void;
-  composerContent?: string;
 }
 
 // --- Constants ---
@@ -121,7 +120,7 @@ function highlightVariables(text: string, maxLength?: number) {
 
 // --- Component ---
 
-export function TemplateLibrary({ onApplyTemplate, composerContent }: TemplateLibraryProps) {
+export function TemplateLibrary({ onApplyTemplate }: TemplateLibraryProps) {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');

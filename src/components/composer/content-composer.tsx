@@ -20,7 +20,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { TemplateLibrary } from '@/components/composer/template-library';
 import {
@@ -32,12 +32,15 @@ import {
   Eye,
   Wand2,
   Calendar as CalendarIcon,
-  ChevronDown,
-  Plus,
   X,
   Check,
   Globe,
   BookOpen,
+  AlertTriangle,
+  MessageSquare,
+  Share2,
+  Heart,
+  Bookmark,
 } from 'lucide-react';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -69,6 +72,14 @@ function getCharColor(count: number, limit: number) {
   return 'text-emerald-500';
 }
 
+function getCharBgColor(count: number, limit: number) {
+  if (limit === Infinity) return 'bg-transparent';
+  const ratio = count / limit;
+  if (ratio > 0.95) return 'bg-red-500/10 text-red-600 dark:text-red-400';
+  if (ratio > 0.8) return 'bg-amber-500/10 text-amber-600 dark:text-amber-400';
+  return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400';
+}
+
 function formatDate(date: Date): string {
   return date.toLocaleDateString('en-US', {
     weekday: 'short',
@@ -77,6 +88,106 @@ function formatDate(date: Date): string {
     year: 'numeric',
   });
 }
+
+// Mock user profiles for realistic previews
+const MOCK_PROFILES: Record<PlatformKey, { name: string; handle: string; initials: string; followers: string }> = {
+  facebook: { name: 'Your Brand', handle: 'yourbrand', initials: 'YB', followers: '12.4K followers' },
+  instagram: { name: 'Your Brand', handle: '@yourbrand', initials: 'YB', followers: '8.2K followers' },
+  twitter: { name: 'Your Brand', handle: '@yourbrand', initials: 'YB', followers: '5.6K followers' },
+  linkedin: { name: 'Your Name', handle: 'Your Name · Founder & CEO', initials: 'YN', followers: '2.1K connections' },
+  tiktok: { name: 'Your Brand', handle: '@yourbrand', initials: 'YB', followers: '34.2K followers' },
+  youtube: { name: 'Your Brand', handle: 'Your Brand', initials: 'YB', followers: '1.2K subscribers' },
+};
+
+const PLATFORM_HANDLE_COLORS: Record<PlatformKey, string> = {
+  facebook: 'text-sky-600',
+  instagram: 'text-pink-600',
+  twitter: 'text-zinc-900 dark:text-zinc-100',
+  linkedin: 'text-blue-700 dark:text-blue-400',
+  tiktok: 'text-zinc-900 dark:text-zinc-100',
+  youtube: 'text-red-600',
+};
+
+const PLATFORM_AVATAR_COLORS: Record<PlatformKey, string> = {
+  facebook: 'bg-sky-500',
+  instagram: 'bg-gradient-to-br from-pink-500 to-amber-400',
+  twitter: 'bg-zinc-800 dark:bg-zinc-200',
+  linkedin: 'bg-blue-700',
+  tiktok: 'bg-zinc-900 dark:bg-zinc-100',
+  youtube: 'bg-red-600',
+};
+
+const PLATFORM_AVATAR_TEXT: Record<PlatformKey, string> = {
+  facebook: 'text-white',
+  instagram: 'text-white',
+  twitter: 'text-white dark:text-zinc-900',
+  linkedin: 'text-white',
+  tiktok: 'text-white dark:text-zinc-900',
+  youtube: 'text-white',
+};
+
+const PLATFORM_PREVIEW_LABEL: Record<PlatformKey, string> = {
+  facebook: 'Facebook Post',
+  instagram: 'Instagram Post',
+  twitter: 'X Post',
+  linkedin: 'LinkedIn Post',
+  tiktok: 'TikTok Caption',
+  youtube: 'YouTube Post',
+};
+
+const PLATFORM_FOOTER_ACTIONS: Record<PlatformKey, { left: { icon: React.ReactNode; label: string }[]; right: { icon: React.ReactNode; label: string }[] }> = {
+  facebook: {
+    left: [
+      { icon: <Heart className="size-3.5" />, label: 'Like' },
+      { icon: <MessageSquare className="size-3.5" />, label: 'Comment' },
+      { icon: <Share2 className="size-3.5" />, label: 'Share' },
+    ],
+    right: [{ icon: <Bookmark className="size-3.5" />, label: 'Save' }],
+  },
+  instagram: {
+    left: [
+      { icon: <Heart className="size-3.5" />, label: 'Like' },
+      { icon: <MessageSquare className="size-3.5" />, label: 'Comment' },
+      { icon: <Share2 className="size-3.5" />, label: 'Share' },
+    ],
+    right: [{ icon: <Bookmark className="size-3.5" />, label: 'Save' }],
+  },
+  twitter: {
+    left: [
+      { icon: <MessageSquare className="size-3.5" />, label: 'Reply' },
+      { icon: <Heart className="size-3.5" />, label: 'Repost' },
+      { icon: <Heart className="size-3.5" />, label: 'Like' },
+      { icon: <Bookmark className="size-3.5" />, label: 'View' },
+    ],
+    right: [],
+  },
+  linkedin: {
+    left: [
+      { icon: <Heart className="size-3.5" />, label: 'Like' },
+      { icon: <MessageSquare className="size-3.5" />, label: 'Comment' },
+      { icon: <Share2 className="size-3.5" />, label: 'Repost' },
+      { icon: <Send className="size-3.5" />, label: 'Send' },
+    ],
+    right: [],
+  },
+  tiktok: {
+    left: [],
+    right: [
+      { icon: <Heart className="size-3.5" />, label: 'Like' },
+      { icon: <MessageSquare className="size-3.5" />, label: 'Comment' },
+      { icon: <Bookmark className="size-3.5" />, label: 'Save' },
+      { icon: <Share2 className="size-3.5" />, label: 'Share' },
+    ],
+  },
+  youtube: {
+    left: [
+      { icon: <Heart className="size-3.5" />, label: 'Like' },
+      { icon: <Heart className="size-3.5" />, label: 'Dislike' },
+      { icon: <Share2 className="size-3.5" />, label: 'Share' },
+    ],
+    right: [],
+  },
+};
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -316,8 +427,15 @@ export function ContentComposer() {
     }
   };
 
-  // ─── Preview data ─────────────────────────────────────────────────────────
-  const previewPlatforms = selectedPlatforms.length > 0 ? selectedPlatforms : [];
+  // ─── Preview data: always show platforms ──────────────────────────────────
+  // When no platforms selected: show all 6 if content exists, else show all 6 as placeholders
+  // When platforms selected: show only selected platforms
+  const previewPlatforms: PlatformKey[] =
+    selectedPlatforms.length > 0
+      ? selectedPlatforms
+      : ALL_PLATFORM_KEYS;
+
+  const hasContent = content.trim().length > 0;
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
@@ -868,7 +986,6 @@ export function ContentComposer() {
                   setContent(templateContent);
                   setIsAiGenerated(false);
                 }}
-                composerContent={content}
               />
             </TabsContent>
 
@@ -881,16 +998,25 @@ export function ContentComposer() {
                     Post Preview
                   </CardTitle>
                   <CardDescription>
-                    See how your post will look on each platform
+                    {selectedPlatforms.length > 0
+                      ? `Previewing ${selectedPlatforms.length} selected platform${selectedPlatforms.length !== 1 ? 's' : ''}`
+                      : hasContent
+                        ? 'Showing how your content looks across all platforms'
+                        : 'Select platforms and type content to see previews'}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {previewPlatforms.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-8 text-center">
-                      <Eye className="size-10 text-muted-foreground/40 mb-3" />
-                      <p className="text-sm text-muted-foreground">
-                        Select platforms above to see previews
-                      </p>
+                  {!hasContent && selectedPlatforms.length === 0 ? (
+                    <div className="flex flex-col gap-4 max-h-[500px] overflow-y-auto pr-1">
+                      {previewPlatforms.map((key) => (
+                        <PlatformPreview
+                          key={key}
+                          platform={key}
+                          content=""
+                          hashtags={[]}
+                          isPlaceholder
+                        />
+                      ))}
                     </div>
                   ) : (
                     <div className="flex flex-col gap-4 max-h-[500px] overflow-y-auto pr-1">
@@ -920,64 +1046,171 @@ function PlatformPreview({
   platform,
   content,
   hashtags,
+  isPlaceholder = false,
 }: {
   platform: PlatformKey;
   content: string;
   hashtags: string[];
+  isPlaceholder?: boolean;
 }) {
   const info = PLATFORMS[platform];
-  const icon = getPlatformIcon(platform);
-  const displayContent =
-    content.length > info.maxChars
-      ? content.substring(0, info.maxChars) + '...'
-      : content;
-  const hashtagsText = hashtags.length > 0 ? '\n\n' + hashtags.join(' ') : '';
-  const truncated =
-    (displayContent + hashtagsText).length > 200
-      ? (displayContent + hashtagsText).substring(0, 200) + '...'
-      : displayContent + hashtagsText;
+  const profile = MOCK_PROFILES[platform];
+  const avatarColor = PLATFORM_AVATAR_COLORS[platform];
+  const avatarText = PLATFORM_AVATAR_TEXT[platform];
+  const handleColor = PLATFORM_HANDLE_COLORS[platform];
+  const previewLabel = PLATFORM_PREVIEW_LABEL[platform];
+  const footerActions = PLATFORM_FOOTER_ACTIONS[platform];
+
+  // Build display text
+  const fullText = content + (hashtags.length > 0 ? '\n\n' + hashtags.join(' ') : '');
+  const isOverLimit = fullText.length > info.maxChars;
+  const displayContent = isOverLimit
+    ? content.substring(0, info.maxChars) + '...'
+    : content;
+  const truncatedText = displayContent + (hashtags.length > 0 ? '\n\n' + hashtags.join(' ') : '');
+  const charRatio = fullText.length / info.maxChars;
 
   return (
-    <div className="rounded-lg border overflow-hidden">
+    <div className="rounded-xl border overflow-hidden shadow-sm hover:shadow-md transition-shadow">
       {/* Platform header bar */}
       <div
-        className="px-3 py-2 flex items-center gap-2"
+        className="px-3 py-2 flex items-center justify-between"
         style={{ backgroundColor: info.color }}
       >
-        <span className="text-lg">{icon}</span>
-        <span className="text-white text-xs font-semibold">{info.name}</span>
-        <Badge
-          variant="secondary"
-          className="ml-auto text-[10px] bg-white/20 text-white border-0"
-        >
-          {info.maxChars.toLocaleString()} chars
-        </Badge>
+        <div className="flex items-center gap-2">
+          <span className="text-base">{getPlatformIcon(platform)}</span>
+          <span className="text-white text-xs font-bold tracking-wide">{previewLabel}</span>
+        </div>
+        {isOverLimit ? (
+          <Badge className="bg-red-500 text-white border-0 text-[10px] gap-1">
+            <AlertTriangle className="size-3" />
+            Over limit
+          </Badge>
+        ) : (
+          <Badge className="bg-white/20 text-white border-0 text-[10px]">
+            {info.maxChars.toLocaleString()} char limit
+          </Badge>
+        )}
       </div>
-      {/* Content area */}
-      <div className="p-3 bg-background">
-        <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
-          {truncated || (
-            <span className="text-muted-foreground italic">
-              Start typing to see preview...
-            </span>
-          )}
-        </p>
-      </div>
-      {/* Footer bar */}
-      <div className="px-3 py-2 border-t bg-muted/30 flex items-center justify-between">
-        <span className="text-[10px] text-muted-foreground">
-          {(displayContent + hashtagsText).length} / {info.maxChars.toLocaleString()}
+
+      {/* Mock user profile */}
+      <div className="px-3 py-2.5 flex items-center gap-2.5 bg-background border-b">
+        <Avatar className="size-9 shrink-0">
+          <AvatarFallback className={`${avatarColor} ${avatarText} text-xs font-bold`}>
+            {profile.initials}
+          </AvatarFallback>
+        </Avatar>
+        <div className="flex flex-col min-w-0">
+          <span className="text-sm font-semibold text-foreground leading-tight truncate">
+            {profile.name}
+          </span>
+          <span className={`text-xs ${handleColor} leading-tight truncate`}>
+            {profile.handle}
+          </span>
+        </div>
+        <span className="text-[10px] text-muted-foreground ml-auto shrink-0 hidden sm:inline">
+          {profile.followers}
         </span>
-        <div className="flex items-center gap-3">
-          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-            ♥ Like
-          </span>
-          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-            💬 Comment
-          </span>
-          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-            ↗ Share
-          </span>
+      </div>
+
+      {/* Content area */}
+      <div className="px-3 py-3 bg-background">
+        {isPlaceholder ? (
+          <div className="flex flex-col items-center justify-center py-4 text-center">
+            <span className="text-2xl mb-2 opacity-40">{getPlatformIcon(platform)}</span>
+            <p className="text-xs text-muted-foreground italic leading-relaxed">
+              Your {info.name} post will appear here
+            </p>
+          </div>
+        ) : content.trim() ? (
+          <div className="space-y-2">
+            <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+              {displayContent}
+              {isOverLimit && (
+                <span className="text-red-500 font-medium">...</span>
+              )}
+            </p>
+            {/* Hashtags rendered nicely */}
+            {hashtags.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {hashtags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="text-xs font-medium text-sky-600 dark:text-sky-400 hover:underline cursor-default"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground italic">
+            Start typing to see preview...
+          </p>
+        )}
+      </div>
+
+      {/* Character count bar */}
+      {hasContent && !isPlaceholder && (
+        <div className="px-3 py-1.5 border-t bg-muted/30">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[10px] text-muted-foreground">
+              {fullText.length.toLocaleString()} / {info.maxChars.toLocaleString()}
+            </span>
+            <span className={`text-[10px] font-medium ${
+              isOverLimit
+                ? 'text-red-500'
+                : charRatio > 0.95
+                  ? 'text-red-500'
+                  : charRatio > 0.8
+                    ? 'text-amber-500'
+                    : 'text-emerald-500'
+            }`}>
+              {isOverLimit
+                ? `${(fullText.length - info.maxChars).toLocaleString()} over`
+                : `${Math.round(charRatio * 100)}%`}
+            </span>
+          </div>
+          {/* Progress bar */}
+          <div className="h-1 rounded-full bg-muted overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-300 ${
+                isOverLimit
+                  ? 'bg-red-500'
+                  : charRatio > 0.95
+                    ? 'bg-red-500'
+                    : charRatio > 0.8
+                      ? 'bg-amber-500'
+                      : 'bg-emerald-500'
+              }`}
+              style={{ width: `${Math.min(charRatio * 100, 100)}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Footer actions */}
+      <div className="px-3 py-2 border-t bg-background flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          {footerActions.left.map((action, idx) => (
+            <span
+              key={idx}
+              className="text-muted-foreground/60 hover:text-muted-foreground cursor-default transition-colors flex items-center gap-1"
+            >
+              {action.icon}
+            </span>
+          ))}
+        </div>
+        <div className="flex items-center gap-4">
+          {footerActions.right.map((action, idx) => (
+            <span
+              key={idx}
+              className="text-muted-foreground/60 hover:text-muted-foreground cursor-default transition-colors flex items-center gap-1"
+            >
+              {action.icon}
+            </span>
+          ))}
         </div>
       </div>
     </div>

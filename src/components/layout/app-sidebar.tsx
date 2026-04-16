@@ -22,6 +22,7 @@ import {
   Bell,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PlatformIcon } from '@/components/icons/platform-icons';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -47,14 +48,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   Settings,
 };
 
-const PLATFORM_ICON_COLORS: Record<string, string> = {
-  facebook: 'text-blue-600',
-  instagram: 'text-pink-600',
-  twitter: 'text-zinc-800 dark:text-zinc-200',
-  linkedin: 'text-blue-700',
-  tiktok: 'text-zinc-800 dark:text-zinc-200',
-  youtube: 'text-red-600',
-};
+
 
 export function AppSidebar() {
   const { activeView, setActiveView, sidebarOpen, setSidebarOpen, accounts } = useAppStore();
@@ -157,11 +151,10 @@ export function AppSidebar() {
                       key={account.id}
                       className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-sm"
                     >
-                      <div
-                        className={cn(
-                          'w-2 h-2 rounded-full shrink-0',
-                          platformConfig?.bgColor || 'bg-zinc-500'
-                        )}
+                      <PlatformIcon
+                        platform={account.platform}
+                        size={16}
+                        className="shrink-0"
                       />
                       <span className="text-muted-foreground truncate text-xs">
                         {account.displayName}

@@ -29,13 +29,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import {
-  Instagram,
-  Facebook,
-  Linkedin,
-  Youtube,
-  Music,
-} from 'lucide-react';
+import { PlatformIcon } from '@/components/icons/platform-icons';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const VIEW_TITLES: Record<string, string> = {
@@ -76,16 +70,7 @@ function getPlatformColorClass(platform: string): string {
   }
 }
 
-function PlatformIcon({ platform, className }: { platform: string; className?: string }) {
-  const lower = platform.toLowerCase();
-  const cn = className || 'h-4 w-4';
-  if (lower === 'instagram') return <Instagram className={cn} />;
-  if (lower === 'facebook') return <Facebook className={cn} />;
-  if (lower === 'linkedin') return <Linkedin className={cn} />;
-  if (lower === 'youtube') return <Youtube className={cn} />;
-  if (lower === 'tiktok') return <Music className={cn} />;
-  return <Bell className={cn} />;
-}
+
 
 function NotificationTypeIcon({ type, className }: { type: NotificationType; className?: string }) {
   const cn = className || 'h-3 w-3 text-muted-foreground shrink-0';
@@ -135,7 +120,7 @@ function NotificationItem({
     >
       {/* Platform icon */}
       <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 ${platformColor}`}>
-        <PlatformIcon platform={notification.platform} className="h-4 w-4" />
+        <PlatformIcon platform={notification.platform} size={16} />
       </div>
 
       {/* Content */}

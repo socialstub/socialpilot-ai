@@ -1,5 +1,33 @@
 ---
 Task ID: 1
+Agent: PlatformIcon Agent
+Task: Create PlatformIcon component with real brand SVG icons and update all consumers
+
+Work Log:
+- Read worklog and understood full project state (Next.js 16, App Router, shadcn/ui, 6 social platforms)
+- Identified 6 files with inconsistent platform icons: first letters (`platform.name.charAt(0)`), colored dots, emojis, and Lucide icons that don't map correctly
+- Created `/home/z/my-project/src/components/icons/platform-icons.tsx` with:
+  - `PlatformIcon` component accepting `{ platform, size?, className? }` props
+  - Real SVG brand paths for all 6 platforms: Facebook (blue #1877F2), Instagram (gradient), X/Twitter (black), LinkedIn (blue #0A66C2), TikTok (black), YouTube (red #FF0000)
+  - `getPlatformColor` helper exported for use by other components
+  - Fallback circle with first letter for unknown platforms
+- Updated 6 consumer files:
+  1. `connected-accounts.tsx` - Replaced 7 instances of `platform.name.charAt(0)` across platform selection grid, OAuth redirect, demo mode, authorizing progress, success confirmation, and account cards
+  2. `app-sidebar.tsx` - Replaced colored dots with `<PlatformIcon size={16} />` in Connected Accounts sidebar section
+  3. `header.tsx` - Replaced local PlatformIcon function (Lucide icons) with imported SVG component, removed unused Lucide icon imports
+  4. `content-composer.tsx` - Removed emoji getPlatformIcon function, replaced 3 usage sites
+  5. `dashboard-overview.tsx` - Removed both local getPlatformIcon and getPlatformColor functions, replaced with imported versions, fixed 3 usage sites
+  6. `ai-tools-page.tsx` - Removed Avatar-based getPlatformIcon function, replaced 4 usage sites
+- Verified ESLint passes with zero errors
+
+Stage Summary:
+- **New component**: `src/components/icons/platform-icons.tsx` (PlatformIcon + getPlatformColor exports)
+- **Updated files**: connected-accounts.tsx, app-sidebar.tsx, header.tsx, content-composer.tsx, dashboard-overview.tsx, ai-tools-page.tsx
+- **Result**: All 6 social platforms now display proper brand SVG icons consistently across the entire application
+- **Code quality**: ESLint clean, zero errors
+---
+---
+Task ID: 1
 Agent: Main Agent
 Task: Fix SocialPilot AI - Account Connection Feature & All Preview Issues
 
@@ -120,3 +148,104 @@ Stage Summary:
 - **Key updated files**: src/components/accounts/connected-accounts.tsx (dual OAuth/demo mode), src/components/settings/oauth-settings.tsx, prisma/schema.prisma
 - **Deployment**: User needs to: 1) Deploy to subdomain, 2) Register OAuth apps on each platform's developer portal, 3) Enter credentials in Settings page
 - **Callback URL**: `{subdomain}/api/oauth/callback`
+---
+Task ID: 3
+Agent: Preview Fix Agent
+Task: Fix content composer's preview feature and clean up unnecessary code
+
+Work Log:
+- Read worklog and analyzed existing codebase structure
+- Identified ROOT CAUSE of "no preview is here": In `content-composer.tsx` line 320, `previewPlatforms` was defined as `selectedPlatforms.length > 0 ? selectedPlatforms : []`, which resulted in an empty array when no platforms were selected, causing the preview tab to show an empty state
+- Fixed preview logic with 3-state behavior:
+  1. No platforms selected AND no content typed → shows ALL 6 platforms as placeholder previews with "Your [platform] post will appear here" message
+  2. Platforms selected → shows previews for each selected platform (existing behavior preserved)
+  3. Content typed but no platforms selected → shows previews for ALL 6 platforms so users see how content looks everywhere
+- Completely redesigned PlatformPreview sub-component with realistic mock social media UI:
+  - Platform-specific header bar with brand color, platform emoji, and post type label (e.g. "Facebook Post", "X Post")
+  - Mock user profile section with Avatar (platform-colored initials), display name, handle, and follower count
+  - Character count progress bar with color-coded warnings (green < 80%, amber 80-95%, red > 95%)
+  - "Over limit" badge with warning icon when content exceeds platform's maxChars
+  - Hashtags rendered nicely as sky-blue clickable-style tags
+  - Platform-specific footer action icons (Like, Comment, Share, Bookmark, etc.) matching each platform's real UI
+  - Hover shadow transition on preview cards for polish
+- Cleaned up unused imports: removed `ChevronDown`, `Plus` from content-composer.tsx, removed unused `Separator` import
+- Added new imports: `Avatar`, `AvatarFallback` from shadcn/ui, `AlertTriangle`, `MessageSquare`, `Share2`, `Heart`, `Bookmark` from Lucide
+- Fixed template-library.tsx: removed unused `composerContent` prop from interface and component signature, updated parent component to stop passing it
+- Verified ESLint passes with zero errors
+- Verified dev server compiles successfully (GET / returns 200)
+
+Stage Summary:
+- **Critical fix**: Preview tab now ALWAYS shows platform previews (all 6 when none selected, selected ones when platforms are chosen)
+- **Enhanced PlatformPreview**: Realistic mock social media cards with user profiles, character limit progress bars, hashtag rendering, and platform-specific action icons
+- **Key files modified**: `src/components/composer/content-composer.tsx` (preview logic + PlatformPreview redesign), `src/components/composer/template-library.tsx` (removed unused prop)
+- **Code quality**: ESLint clean, zero errors, no unused imports
+- **New constants added**: MOCK_PROFILES, PLATFORM_HANDLE_COLORS, PLATFORM_AVATAR_COLORS, PLATFORM_AVATAR_TEXT, PLATFORM_PREVIEW_LABEL, PLATFORM_FOOTER_ACTIONS for realistic previews
+---
+Task ID: 2
+Agent: Main Agent
+Task: Rewrite AI Tools page to use real /api/ai endpoint instead of mock data
+
+Work Log:
+- Read worklog and understood project context (Next.js 16, App Router, shadcn/ui, z-ai-web-dev-sdk)
+- Read `/api/ai/route.ts` to understand all 6 supported AI types: generate_caption, rewrite, hashtags, auto_reply, trends, best_time
+- Read `/api/comments/route.ts` to understand comment fetching (GET) and reply persistence (PATCH) endpoints
+- Read current `ai-tools-page.tsx` (1553 lines) and identified all mock data and simulated handlers
+- Completely rewrote `src/components/ai-tools/ai-tools-page.tsx` with the following changes:
+
+  **Removed:**
+  - `MOCK_TRENDS` constant (6 hardcoded trend items)
+  - `MOCK_COMMENTS` constant (5 hardcoded comment items)
+  - `MOCK_HASHTAG_GROUPS` constant (3 hardcoded hashtag groups)
+  - `simulateGeneration()` function (fake setTimeout delay)
+  - `useAppStore` import (unused)
+  - `useCallback` import (unused)
+  - `AvatarImage` import (unused)
+  - `HashtagGroup` interface (no longer needed)
+  - All inline mock data in handlers (local `captions`, `platformAdaptations`, `allHashtags`, `replies` objects)
+
+  **Added:**
+  - `toast` import from 'sonner' for error/success notifications
+  - `callAI()` helper function for POST requests to `/api/ai`
+  - `fetchComments()` - Fetches real comments from `/api/comments` on mount, formats timestamps to relative time
+  - `fetchTrends()` - Fetches real trends from `/api/ai` (type: 'trends'), parses JSON response, maps to TrendItem
+  - Loading states for comments (`isLoadingComments`) and trends (`isLoadingTrends`)
+  - `formatRelativeTime()` helper to convert ISO timestamps to "X min ago" format
+  - `parseTrendGrowth()` helper to extract numeric growth from "+340%" format
+  - `trendingHashtags` and `hashtagPerformanceScore` state for trending hashtag display
+  - API response type interfaces: `AIApiResponse`, `HashtagsApiResponse`, `TrendApiResponse`
+
+  **Replaced handlers with real API calls:**
+  1. `handleGenerate()` → POST `/api/ai` with `{type: 'generate_caption', topic, platform, tone, length}`
+  2. `handleRewrite()` → POST `/api/ai` with `{type: 'rewrite', content, platform, tone}`
+  3. `handleGenerateHashtags()` → POST `/api/ai` with `{type: 'hashtags', topic, platform}`, parses JSON response with hashtags array + performance_score + trending
+  4. `handleGenerateReply()` → POST `/api/ai` with `{type: 'auto_reply', content}`, uses comment text as input
+  5. Trend refresh → calls `fetchTrends()` which POSTs to `/api/ai` with `{type: 'trends'}`
+
+  **UX improvements:**
+  - All API calls wrapped in try/catch with `toast.error()` notifications
+  - Loading spinners shown during API calls (Content Generator, Rewriter, Hashtags, Trends)
+  - Empty states shown when no data is available (comments, trends, hashtags)
+  - "Currently Trending" section replaces "Saved Hashtag Groups" - shows trending hashtags from API with click-to-add
+  - Performance score bar displayed for hashtag generation results
+  - Comment refresh button added to auto-reply tab
+  - Reply approval persists to database via PATCH `/api/comments`
+  - Copy actions show toast success notifications
+
+  **Preserved:**
+  - Same visual design (tabs, layout, cards, gradients, badges)
+  - Same component structure ('use client', named export AIToolsPage)
+  - All shadcn/ui components (Card, Button, Badge, Tabs, etc.)
+  - All interactive features (copy, regenerate, add/remove hashtags, edit replies, approve & send)
+  - Platform icons, velocity indicators, category colors
+
+- Verified ESLint passes with zero errors
+- Verified dev server compiles without errors
+
+Stage Summary:
+- **Key file**: `src/components/ai-tools/ai-tools-page.tsx` (complete rewrite)
+- **All mock data removed**: MOCK_TRENDS, MOCK_COMMENTS, MOCK_HASHTAG_GROUPS, simulateGeneration
+- **All 5 AI features now use real API**: Content Generator, Platform Rewriter, Hashtag Generator, Auto-Reply, Trend Detector
+- **Comments fetched from database**: `/api/comments` (12 seeded comments)
+- **Reply persistence**: PATCH `/api/comments` when approving replies
+- **Error handling**: All API calls wrapped in try/catch with sonner toast notifications
+- **Code quality**: ESLint clean, zero errors, dev server compiles successfully
