@@ -287,25 +287,30 @@ export function DashboardOverview() {
       setIsLoading(true);
       setError(null);
       try {
-        const [analyticsRes, activitiesRes, postsRes] = await Promise.all([
-          fetch('/api/analytics'),
-          fetch('/api/activities'),
-          fetch('/api/posts?status=published&limit=20'),
+        const results = await Promise.allSettled([
+          fetch('/api/analytics').then((r) => r.json()),
+          fetch('/api/activities').then((r) => r.json()),
+          fetch('/api/posts?status=published&limit=20').then((r) => r.json()),
         ]);
 
-        if (!analyticsRes.ok || !activitiesRes.ok || !postsRes.ok) {
-          throw new Error('Failed to fetch dashboard data');
+        const parse = <T,>(result: PromiseSettledResult<{ success?: boolean; data?: T }>, fallback: T): T => {
+          if (result.status === 'fulfilled' && result.value?.success && result.value.data) {
+            return result.value.data;
+          }
+          return fallback;
+        };
+
+        const analyticsResult = parse<AnalyticsData | null>(results[0], null);
+        const activitiesResult = parse<ActivityData[]>(results[1], []);
+        const postsResult = parse<PostData[]>(results[2], []);
+
+        setAnalytics(analyticsResult);
+        setActivityData(activitiesResult);
+        setPostData(postsResult);
+
+        if (!analyticsResult) {
+          setError('Unable to load analytics data. Please try again.');
         }
-
-        const [analyticsJson, activitiesJson, postsJson] = await Promise.all([
-          analyticsRes.json(),
-          activitiesRes.json(),
-          postsRes.json(),
-        ]);
-
-        setAnalytics(analyticsJson.data);
-        setActivityData(activitiesJson.data || []);
-        setPostData(postsJson.data || []);
       } catch (err) {
         console.error('Dashboard fetch error:', err);
         setError(err instanceof Error ? err.message : 'Something went wrong');

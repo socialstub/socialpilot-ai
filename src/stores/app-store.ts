@@ -126,25 +126,25 @@ export const useAppStore = create<AppState>((set, get) => ({
   refreshData: async () => {
     set({ isLoading: true });
     try {
-      const [accountsRes, postsRes, activitiesRes, teamRes] = await Promise.all([
-        fetch('/api/accounts'),
-        fetch('/api/posts'),
-        fetch('/api/activities'),
-        fetch('/api/team'),
+      const results = await Promise.allSettled([
+        fetch('/api/accounts').then((r) => r.json()),
+        fetch('/api/posts').then((r) => r.json()),
+        fetch('/api/activities').then((r) => r.json()),
+        fetch('/api/team').then((r) => r.json()),
       ]);
 
-      const [accounts, posts, activities, teamMembers] = await Promise.all([
-        accountsRes.json(),
-        postsRes.json(),
-        activitiesRes.json(),
-        teamRes.json(),
-      ]);
+      const parse = <T,>(result: PromiseSettledResult<{ success?: boolean; data?: T }>, fallback: T): T => {
+        if (result.status === 'fulfilled' && result.value?.success && result.value.data) {
+          return result.value.data;
+        }
+        return fallback;
+      };
 
       set({
-        accounts: accounts.data || [],
-        posts: posts.data || [],
-        activities: activities.data || [],
-        teamMembers: teamMembers.data || [],
+        accounts: parse<SocialAccountData[]>(results[0], get().accounts),
+        posts: parse<PostData[]>(results[1], get().posts),
+        activities: parse<ActivityData[]>(results[2], get().activities),
+        teamMembers: parse<TeamMemberData[]>(results[3], get().teamMembers),
       });
     } catch (error) {
       console.error('Failed to refresh data:', error);
