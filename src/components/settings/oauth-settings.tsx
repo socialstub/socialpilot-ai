@@ -220,19 +220,15 @@ export function OAuthSettings() {
         isEnabled: data.isEnabled,
       };
 
-      // Only send clientSecret if it's been entered (not empty)
-      // If it's empty and we're updating, keep the existing one
+      // Only send clientSecret if user entered a new one
       if (data.clientSecret.trim()) {
         body.clientSecret = data.clientSecret.trim();
-      } else if (existingSetting) {
-        // Updating without changing secret — API should keep old one
-        // We need to send it, but we don't have the real one (it's masked)
-        // So we skip — the API will keep existing value
-        body.clientSecret = existingSetting.clientSecret;
       }
 
+      // Use POST for new configs, PUT for updates
+      const method = existingSetting ? 'PUT' : 'POST';
       const res = await fetch('/api/oauth/settings', {
-        method: 'POST',
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });

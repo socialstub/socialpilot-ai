@@ -119,6 +119,49 @@ export async function PATCH(request: NextRequest) {
   }
 }
 
+// PUT /api/oauth/settings - Full update (including clientSecret if provided)
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { platform, clientId, clientSecret, redirectUri, scopes, isEnabled } = body;
+
+    if (!platform) {
+      return NextResponse.json(
+        { success: false, error: 'Platform is required' },
+        { status: 400 }
+      );
+    }
+
+    // Build update data - only include clientSecret if it's a new real value (not masked)
+    const updateData: Record<string, unknown> = {};
+    if (clientId) updateData.clientId = clientId;
+    if (clientSecret && !clientSecret.includes('******')) updateData.clientSecret = clientSecret;
+    if (redirectUri !== undefined) updateData.redirectUri = redirectUri;
+    if (scopes) updateData.scopes = JSON.stringify(scopes);
+    if (isEnabled !== undefined) updateData.isEnabled = isEnabled;
+
+    const config = await db.oAuthAppConfig.update({
+      where: { platform },
+      data: updateData,
+    });
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        id: config.id,
+        platform: config.platform,
+        isEnabled: config.isEnabled,
+      },
+    });
+  } catch (error) {
+    console.error('Error updating OAuth settings:', error);
+    return NextResponse.json(
+      { success: false, error: 'Failed to update OAuth settings' },
+      { status: 500 }
+    );
+  }
+}
+
 // DELETE /api/oauth/settings?platform=xxx - Remove OAuth configuration
 export async function DELETE(request: NextRequest) {
   try {
