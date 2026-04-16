@@ -157,3 +157,16 @@ model HashtagGroup {
   platform  String?
   createdAt DateTime @default(now())
 }
+
+model OAuthAppConfig {
+  id          String   @id @default(cuid())
+  platform    String   @unique // facebook, instagram, twitter, linkedin, tiktok, youtube
+  clientId    String
+  clientSecret String
+  redirectUri String?
+  isEnabled   Boolean  @default(false)
+  scopes      String?  // JSON array of scopes
+  extraConfig String?  // JSON for platform-specific settings
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

@@ -95,6 +95,7 @@ export const NAV_ITEMS = [
   { id: 'ai-tools', label: 'AI Tools', icon: 'Sparkles' },
   { id: 'accounts', label: 'Accounts', icon: 'Link2' },
   { id: 'team', label: 'Team', icon: 'Users' },
+  { id: 'settings', label: 'Settings', icon: 'Settings' },
 ] as const;
 
 export type NavItem = (typeof NAV_ITEMS)[number]['id'];

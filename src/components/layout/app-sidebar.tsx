@@ -44,6 +44,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   Sparkles,
   Link2,
   Users,
+  Settings,
 };
 
 const PLATFORM_ICON_COLORS: Record<string, string> = {

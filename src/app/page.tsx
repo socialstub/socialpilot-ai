@@ -12,6 +12,7 @@ import { AIToolsPage } from '@/components/ai-tools/ai-tools-page';
 import { ConnectedAccounts } from '@/components/accounts/connected-accounts';
 import { TeamManagement } from '@/components/team/team-management';
 import { SocialInbox } from '@/components/inbox/social-inbox';
+import { OAuthSettings } from '@/components/settings/oauth-settings';
 
 const VIEW_MAP: Record<string, React.ComponentType> = {
   dashboard: DashboardOverview,
@@ -22,6 +23,7 @@ const VIEW_MAP: Record<string, React.ComponentType> = {
   'ai-tools': AIToolsPage,
   accounts: ConnectedAccounts,
   team: TeamManagement,
+  settings: OAuthSettings,
 };
 
 export default function Home() {
