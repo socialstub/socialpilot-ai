@@ -25,3 +25,29 @@ Stage Summary:
 - **Database reseeded** with comprehensive demo data
 - **Code quality**: ESLint passes with zero errors
 - **Services running**: Caddy (81), Next.js (3000), Notification Service (3010)
+---
+Task ID: 1
+Agent: Main Agent
+Task: Fix Connect Accounts buttons not working and improve UX
+
+Work Log:
+- Analyzed the ConnectedAccounts component and identified the root cause bug
+- Found that clicking a platform button in the Connect dialog only set `selectedPlatform` but never changed `authStep` from 'select' to 'auth', so the dialog stayed on platform selection view making buttons appear unresponsive
+- Completely rewrote the ConnectedAccounts component with proper multi-step flow:
+  - Step 1: Platform Selection (6 platforms in grid)
+  - Step 2: Enter Username form with back navigation
+  - Step 3: Animated OAuth authorization progress with step-by-step messages
+  - Step 4: Success confirmation with platform badge
+- Added proper delete confirmation dialog (AlertDialog) instead of instant delete
+- Added hover effects, scale animations, and progress bar for OAuth simulation
+- Created middleware.ts to fix cross-origin request warnings from preview iframe
+- Verified all API endpoints return 200
+- Verified lint passes clean
+- Verified compilation succeeds
+
+Stage Summary:
+- **Root cause fixed**: `handleSelectPlatform()` now properly sets both `selectedPlatform` AND `authStep('enter_username')`
+- Key file: `/home/z/my-project/src/components/accounts/connected-accounts.tsx` (complete rewrite)
+- Key file: `/home/z/my-project/src/middleware.ts` (new - CORS headers for preview)
+- All buttons are now fully clickable and responsive
+- Connect flow: Click "Connect Account" → Select Platform → Enter Username → Authorize → Done
